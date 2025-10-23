@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "neuro-mail",
   "builds": [
     {
       "src": "index.html",
@@ -67,11 +66,6 @@
       ]
     }
   ],
-  "functions": {
-    "app/api/health.js": {
-      "maxDuration": 10
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }
