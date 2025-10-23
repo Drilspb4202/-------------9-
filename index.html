@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroMail - Временные почтовые ящики</title>
+    <link rel="icon" type="image/x-icon" href="img/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/mobile-enhancements.css">
+    <link rel="stylesheet" href="css/language-switcher.css">
+    <link rel="stylesheet" href="css/compact-design.css">
+    <link rel="stylesheet" href="css/button-fix.css">
+    <link rel="stylesheet" href="css/enhanced-ui.css">
+</head>
+<body>
+    <!-- Анимированный фон -->
+    <div class="animated-background">
+        <div class="animated-bubble" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="animated-bubble" style="left: 20%; animation-delay: 2s;"></div>
+        <div class="animated-bubble" style="left: 30%; animation-delay: 4s;"></div>
+        <div class="animated-bubble" style="left: 40%; animation-delay: 1s;"></div>
+        <div class="animated-bubble" style="left: 50%; animation-delay: 3s;"></div>
+        <div class="animated-bubble" style="left: 60%; animation-delay: 5s;"></div>
+        <div class="animated-bubble" style="left: 70%; animation-delay: 2.5s;"></div>
+        <div class="animated-bubble" style="left: 80%; animation-delay: 4.5s;"></div>
+        <div class="animated-bubble" style="left: 90%; animation-delay: 1.5s;"></div>
+    </div>
+
+    <!-- Заголовок -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-envelope-open-text"></i>
+                <span class="logo-text" data-i18n="app_name">NeuroMail</span>
+            </div>
+            <div class="header-controls">
+                <div class="language-switcher">
+                    <button id="lang-ru" class="lang-btn active" data-lang="ru">RU</button>
+                    <button id="lang-en" class="lang-btn" data-lang="en">EN</button>
+                </div>
+                <div class="connection-status">
+                    <i class="fas fa-wifi" id="connection-icon"></i>
+                    <span id="connection-text" data-i18n="connected">Подключено</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Навигация -->
+        <nav class="navigation">
+            <div class="nav-item active" data-target="inboxes-section">
+                <i class="fas fa-inbox"></i>
+                <span data-i18n="nav_inboxes">Почтовые ящики</span>
+            </div>
+            <div class="nav-item" data-target="emails-section">
+                <i class="fas fa-envelope"></i>
+                <span data-i18n="nav_emails">Письма</span>
+            </div>
+            <div class="nav-item" data-target="generator-section">
+                <i class="fas fa-user-plus"></i>
+                <span data-i18n="nav_generator">Генератор</span>
+            </div>
+            <div class="nav-item" data-target="settings-section">
+                <i class="fas fa-cog"></i>
+                <span data-i18n="nav_settings">Настройки</span>
+            </div>
+            <div class="nav-item" data-target="premium-section">
+                <i class="fas fa-key"></i>
+                <span data-i18n="nav_premium">Premium</span>
+            </div>
+        </nav>
+
+        <!-- Контентные секции -->
+        <div class="content">
+            <!-- Секция почтовых ящиков -->
+            <section id="inboxes-section" class="content-section active">
+                <div class="section-header">
+                    <h2 data-i18n="inboxes_title">Почтовые ящики</h2>
+                    <button class="btn btn-primary" id="create-inbox-btn">
+                        <i class="fas fa-plus"></i>
+                        <span data-i18n="create_new_inbox">Создать новый</span>
+                    </button>
+                </div>
+                <div class="inboxes-container">
+                    <div id="inboxes-loading" class="loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span data-i18n="inbox_loading">Загрузка почтовых ящиков...</span>
+                    </div>
+                    <div id="inboxes-list" class="inboxes-list"></div>
+                </div>
+            </section>
+
+            <!-- Секция писем -->
+            <section id="emails-section" class="content-section">
+                <div class="section-header">
+                    <h2 data-i18n="emails_title">Письма</h2>
+                    <div class="email-controls">
+                        <select id="inbox-selector" class="select">
+                            <option value="" data-i18n="select_inbox">Выберите ящик</option>
+                        </select>
+                        <button class="btn btn-secondary" id="refresh-emails-btn">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="emails-container">
+                    <div id="emails-loading" class="loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span data-i18n="emails_loading">Загрузка писем...</span>
+                    </div>
+                    <div id="emails-list" class="emails-list"></div>
+                </div>
+            </section>
+
+            <!-- Секция генератора -->
+            <section id="generator-section" class="content-section">
+                <div class="section-header">
+                    <h2 data-i18n="generator_title">Генератор данных</h2>
+                    <div class="generator-controls">
+                        <div class="location-selectors">
+                            <select id="country-selector" class="select">
+                                <option value="" data-i18n="select_country">Выберите страну</option>
+                                <option value="USA">США</option>
+                                <option value="Russia">Россия</option>
+                                <option value="Germany">Германия</option>
+                                <option value="France">Франция</option>
+                                <option value="UK">Великобритания</option>
+                                <option value="Canada">Канада</option>
+                                <option value="Australia">Австралия</option>
+                                <option value="Japan">Япония</option>
+                                <option value="Brazil">Бразилия</option>
+                                <option value="India">Индия</option>
+                                <option value="Poland">Польша</option>
+                                <option value="Kazakhstan">Казахстан</option>
+                            </select>
+                            <select id="state-selector" class="select" disabled>
+                                <option value="" data-i18n="select_state">Выберите штат/регион</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="generate-data-btn">
+                            <i class="fas fa-magic"></i>
+                            <span data-i18n="generate_data">Сгенерировать</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="generator-container">
+                    <div id="generated-data" class="generated-data"></div>
+                </div>
+            </section>
+
+            <!-- Секция настроек -->
+            <section id="settings-section" class="content-section">
+                <div class="section-header">
+                    <h2 data-i18n="settings_title">Настройки</h2>
+                </div>
+                <div class="settings-container">
+                    <div class="settings-group">
+                        <h3 data-i18n="api_settings">Настройки API</h3>
+                        <div class="setting-item">
+                            <label data-i18n="api_mode">Режим API:</label>
+                            <select id="api-mode" class="select">
+                                <option value="public" data-i18n="api_mode_public">Публичные ключи</option>
+                                <option value="personal" data-i18n="api_mode_personal">Персональный ключ</option>
+                                <option value="combined" data-i18n="api_mode_combined">Комбинированный</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label data-i18n="personal_api_key">Персональный API ключ:</label>
+                            <input type="password" id="personal-api-key" class="input" placeholder="Введите ваш API ключ">
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <h3 data-i18n="app_settings">Настройки приложения</h3>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="auto-delete-inboxes" checked>
+                                <span data-i18n="auto_delete_inboxes">Автоудаление ящиков</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="enable-notifications" checked>
+                                <span data-i18n="enable_notifications">Уведомления</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Секция Premium -->
+            <section id="premium-section" class="content-section">
+                <div class="section-header">
+                    <h2 data-i18n="premium_title">Premium</h2>
+                </div>
+                <div class="premium-container">
+                    <div class="premium-card">
+                        <div class="premium-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <h3 data-i18n="premium_benefits">Преимущества Premium</h3>
+                        <ul class="premium-features">
+                            <li data-i18n="premium_feature_1">Неограниченные ящики</li>
+                            <li data-i18n="premium_feature_2">Приоритетная поддержка</li>
+                            <li data-i18n="premium_feature_3">Расширенная статистика</li>
+                            <li data-i18n="premium_feature_4">API без лимитов</li>
+                        </ul>
+                        <button class="btn btn-premium" data-i18n="get_premium">Получить Premium</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Мобильная навигация -->
+    <div class="mobile-fixed-nav">
+        <div class="mobile-nav-item active" data-target="inboxes-section">
+            <i class="fas fa-inbox"></i>
+            <span data-i18n="nav_inboxes">Ящики</span>
+        </div>
+        <div class="mobile-nav-item" data-target="emails-section">
+            <i class="fas fa-envelope"></i>
+            <span data-i18n="nav_emails">Письма</span>
+        </div>
+        <div class="mobile-nav-item" data-target="generator-section">
+            <i class="fas fa-user-plus"></i>
+            <span data-i18n="nav_generator">Генератор</span>
+        </div>
+        <div class="mobile-nav-item" data-target="settings-section">
+            <i class="fas fa-cog"></i>
+            <span data-i18n="nav_settings">Настройки</span>
+        </div>
+        <div class="mobile-nav-item" data-target="premium-section">
+            <i class="fas fa-key"></i>
+            <span data-i18n="nav_premium">Premium</span>
+        </div>
+    </div>
+
+    <!-- Модальные окна -->
+    <!-- Модальное окно создания ящика -->
+    <div id="create-inbox-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="create_inbox_title">Создание почтового ящика</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p data-i18n="create_inbox_description">Создаем новый временный почтовый ящик...</p>
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span data-i18n="creating_inbox">Создание ящика...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно отправки письма -->
+    <div id="send-email-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="send_email_title">Отправка письма</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="send-email-form">
+                    <div class="form-group">
+                        <label data-i18n="email_to">Кому:</label>
+                        <input type="email" id="email-to" class="input" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="email_subject">Тема:</label>
+                        <input type="text" id="email-subject" class="input" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="email_content">Содержимое:</label>
+                        <textarea id="email-content" class="textarea" rows="10" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="email-html" checked>
+                            <span data-i18n="email_html_format">HTML формат</span>
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary modal-close" data-i18n="cancel">Отмена</button>
+                        <button type="submit" class="btn btn-primary" data-i18n="send_email">Отправить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно просмотра письма -->
+    <div id="view-email-modal" class="modal">
+        <div class="modal-content email-viewer">
+            <div class="modal-header">
+                <h3 id="email-viewer-title" data-i18n="email_viewer">Просмотр письма</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="email-header">
+                    <div class="email-meta">
+                        <div class="email-field">
+                            <strong data-i18n="email_from">От:</strong>
+                            <span id="email-from"></span>
+                        </div>
+                        <div class="email-field">
+                            <strong data-i18n="email_to">Кому:</strong>
+                            <span id="email-to-view"></span>
+                        </div>
+                        <div class="email-field">
+                            <strong data-i18n="email_subject">Тема:</strong>
+                            <span id="email-subject-view"></span>
+                        </div>
+                        <div class="email-field">
+                            <strong data-i18n="email_date">Дата:</strong>
+                            <span id="email-date"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="email-content">
+                    <div id="email-body"></div>
+                </div>
+                <div class="email-attachments" id="email-attachments" style="display: none;">
+                    <h4 data-i18n="email_attachments">Вложения:</h4>
+                    <div id="attachments-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Уведомления -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Подключение скриптов -->
+    <script src="js/api-key-pool.js"></script>
+    <script src="js/apiKeyManager.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/gemini-api.js"></script>
+    <script src="js/generator.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/performance-optimizer.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

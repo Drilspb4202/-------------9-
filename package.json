@@ -1,0 +1,49 @@
+{
+  "name": "neuro-mail",
+  "version": "1.0.0",
+  "description": "Современный сервис для работы с временными почтовыми ящиками через API MailSlurp",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "build": "echo 'No build step required for static site'",
+    "deploy": "vercel --prod",
+    "preview": "vercel",
+    "test": "echo 'No tests specified'",
+    "lint": "echo 'No linting configured'",
+    "serve": "npx http-server -p 8000 -c-1"
+  },
+  "keywords": [
+    "email",
+    "temporary",
+    "mailbox",
+    "mailslurp",
+    "api",
+    "cyberpunk",
+    "modern",
+    "web-app"
+  ],
+  "author": "Colin (Flight 413 Survivor)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/neuro-mail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/neuro-mail/issues"
+  },
+  "homepage": "https://neuro-mail.vercel.app",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "vercel": "^32.0.0"
+  },
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

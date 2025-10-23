@@ -1,0 +1,413 @@
+/* Компактный дизайн для экономии места */
+
+/* Компактные карточки */
+.compact-mode .inbox-item,
+.compact-mode .email-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.compact-mode .inbox-header,
+.compact-mode .email-header {
+    margin-bottom: 0.5rem;
+}
+
+.compact-mode .inbox-meta,
+.compact-mode .email-meta {
+    font-size: 0.8rem;
+    gap: 0.2rem;
+}
+
+/* Компактная навигация */
+.compact-mode .nav-item {
+    padding: 0.75rem;
+    gap: 0.5rem;
+}
+
+.compact-mode .nav-item i {
+    font-size: 1rem;
+}
+
+.compact-mode .nav-item span {
+    font-size: 0.9rem;
+}
+
+/* Компактные кнопки */
+.compact-mode .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.compact-mode .btn-small {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+}
+
+/* Компактные модальные окна */
+.compact-mode .modal-content {
+    max-width: 500px;
+}
+
+.compact-mode .modal-header {
+    padding: 1rem;
+}
+
+.compact-mode .modal-body {
+    padding: 1rem;
+}
+
+/* Компактные формы */
+.compact-mode .form-group {
+    margin-bottom: 0.75rem;
+}
+
+.compact-mode .form-actions {
+    margin-top: 1rem;
+    gap: 0.75rem;
+}
+
+/* Компактные заголовки */
+.compact-mode .section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+}
+
+.compact-mode .section-header h2 {
+    font-size: 1.5rem;
+}
+
+/* Компактные списки */
+.compact-mode .inboxes-list,
+.compact-mode .emails-list {
+    gap: 0.5rem;
+}
+
+/* Компактные настройки */
+.compact-mode .settings-group {
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.compact-mode .settings-group h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+.compact-mode .setting-item {
+    margin-bottom: 0.75rem;
+}
+
+/* Компактный генератор данных */
+.compact-mode .generated-data {
+    padding: 1rem;
+    font-size: 0.85rem;
+}
+
+.compact-mode .data-item {
+    padding: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.compact-mode .data-section {
+    margin-bottom: 1rem;
+}
+
+.compact-mode .data-section h4 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Компактные уведомления */
+.compact-mode .toast {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+}
+
+/* Компактный просмотрщик писем */
+.compact-mode .email-viewer .modal-content {
+    max-width: 600px;
+}
+
+.compact-mode .email-header {
+    padding: 0.75rem;
+}
+
+.compact-mode .email-content {
+    padding: 0.75rem;
+}
+
+.compact-mode .email-content iframe {
+    height: 300px;
+}
+
+/* Компактная мобильная навигация */
+.compact-mode .mobile-fixed-nav {
+    padding: 0.4rem;
+}
+
+.compact-mode .mobile-nav-item {
+    padding: 0.4rem;
+    gap: 0.2rem;
+}
+
+.compact-mode .mobile-nav-item i {
+    font-size: 1rem;
+}
+
+.compact-mode .mobile-nav-item span {
+    font-size: 0.65rem;
+}
+
+/* Компактный заголовок */
+.compact-mode .header {
+    padding: 0.75rem 0;
+}
+
+.compact-mode .header-content {
+    padding: 0 0.75rem;
+}
+
+.compact-mode .logo {
+    font-size: 1.3rem;
+}
+
+.compact-mode .logo i {
+    font-size: 1.7rem;
+}
+
+/* Компактный основной контент */
+.compact-mode .main-content {
+    padding: 1.5rem 0.75rem;
+    gap: 1.5rem;
+}
+
+.compact-mode .content {
+    padding: 1.5rem;
+}
+
+/* Компактные пустые состояния */
+.compact-mode .empty-state {
+    padding: 1.5rem 1rem;
+}
+
+.compact-mode .empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.compact-mode .empty-state h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+}
+
+.compact-mode .empty-state p {
+    font-size: 0.85rem;
+}
+
+/* Компактная загрузка */
+.compact-mode .loading {
+    padding: 1.5rem;
+}
+
+.compact-mode .loading i {
+    font-size: 1.8rem;
+}
+
+.compact-mode .loading span {
+    font-size: 0.9rem;
+}
+
+/* Компактные вложения */
+.compact-mode .attachment-item {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.compact-mode .attachment-item i {
+    font-size: 0.9rem;
+}
+
+.compact-mode .attachment-item span {
+    font-size: 0.85rem;
+}
+
+/* Компактные метаданные */
+.compact-mode .email-field {
+    margin-bottom: 0.4rem;
+}
+
+.compact-mode .email-field strong {
+    font-size: 0.85rem;
+}
+
+.compact-mode .email-field span {
+    font-size: 0.85rem;
+}
+
+/* Компактные действия */
+.compact-mode .inbox-actions,
+.compact-mode .email-actions {
+    gap: 0.4rem;
+}
+
+/* Компактные превью писем */
+.compact-mode .email-preview {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+}
+
+/* Компактные языковые кнопки */
+.compact-mode .lang-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+}
+
+/* Компактный статус подключения */
+.compact-mode .connection-status {
+    font-size: 0.8rem;
+}
+
+.compact-mode .connection-status i {
+    font-size: 0.9rem;
+}
+
+/* Компактные контролы */
+.compact-mode .email-controls {
+    gap: 0.5rem;
+}
+
+.compact-mode .email-controls .select {
+    font-size: 0.85rem;
+    padding: 0.6rem;
+}
+
+/* Компактные премиум карточки */
+.compact-mode .premium-card {
+    padding: 2rem 1.5rem;
+}
+
+.compact-mode .premium-icon {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.compact-mode .premium-card h3 {
+    font-size: 1.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.compact-mode .premium-features {
+    margin-bottom: 1.5rem;
+}
+
+.compact-mode .premium-features li {
+    padding: 0.4rem 0;
+    font-size: 0.9rem;
+}
+
+/* Адаптация для мобильных устройств в компактном режиме */
+@media (max-width: 768px) {
+    .compact-mode .main-content {
+        padding: 1rem 0.5rem;
+        gap: 1rem;
+    }
+
+    .compact-mode .content {
+        padding: 1rem;
+    }
+
+    .compact-mode .inbox-item,
+    .compact-mode .email-item {
+        padding: 0.6rem;
+    }
+
+    .compact-mode .modal-content {
+        width: 98%;
+        margin: 0.5rem;
+    }
+
+    .compact-mode .btn {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .compact-mode .section-header {
+        margin-bottom: 1rem;
+    }
+
+    .compact-mode .section-header h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* Переключатель компактного режима */
+.compact-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+.compact-toggle:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.compact-toggle i {
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+
+.compact-toggle.active {
+    background: var(--gradient-primary);
+    box-shadow: var(--glow);
+}
+
+/* Анимация переключения режима */
+body {
+    transition: all 0.3s ease;
+}
+
+.compact-mode {
+    transition: all 0.3s ease;
+}
+
+/* Скрытие переключателя на мобильных */
+@media (max-width: 768px) {
+    .compact-toggle {
+        display: none;
+    }
+}
+
+/* Компактные стили для печати */
+@media print {
+    .compact-mode .nav-item,
+    .compact-mode .mobile-fixed-nav,
+    .compact-mode .compact-toggle {
+        display: none;
+    }
+
+    .compact-mode .main-content {
+        grid-template-columns: 1fr;
+        padding: 0;
+    }
+
+    .compact-mode .content {
+        padding: 0;
+        box-shadow: none;
+        border: none;
+    }
+}

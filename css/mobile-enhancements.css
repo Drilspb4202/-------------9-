@@ -1,0 +1,508 @@
+/* Мобильные стили и оптимизации */
+
+/* Основные мобильные стили */
+@media (max-width: 768px) {
+    /* Скрытие десктопной навигации */
+    .navigation {
+        display: none !important;
+    }
+
+    /* Показ мобильной навигации */
+    .mobile-fixed-nav {
+        display: flex !important;
+    }
+
+    /* Основной контент */
+    .main-content {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+        margin-bottom: 80px; /* Место для мобильной навигации */
+    }
+
+    /* Заголовок */
+    .header {
+        padding: 0.5rem 0;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0 1rem;
+    }
+
+    .logo {
+        font-size: 1.2rem;
+    }
+
+    .logo i {
+        font-size: 1.5rem;
+    }
+
+    .header-controls {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    /* Контент */
+    .content {
+        padding: 1rem;
+        border-radius: var(--radius);
+    }
+
+    /* Заголовки секций */
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header h2 {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+
+    /* Кнопки */
+    .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn-small {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        min-width: 40px;
+        width: auto;
+    }
+
+    /* Формы */
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    /* Списки */
+    .inboxes-list, .emails-list {
+        gap: 0.75rem;
+    }
+
+    .inbox-item, .email-item {
+        padding: 1rem;
+    }
+
+    .inbox-header, .email-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .inbox-actions, .email-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Модальные окна */
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .modal-body {
+        padding: 1rem;
+    }
+
+    /* Просмотрщик писем */
+    .email-viewer .modal-content {
+        width: 98%;
+        margin: 0.5rem;
+    }
+
+    .email-header {
+        padding: 0.75rem;
+    }
+
+    .email-field {
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .email-field strong {
+        min-width: auto;
+        font-size: 0.9rem;
+    }
+
+    .email-content {
+        padding: 0.75rem;
+    }
+
+    .email-content iframe {
+        height: 300px;
+    }
+
+    /* Генератор данных */
+    .generated-data {
+        padding: 1rem;
+        font-size: 0.85rem;
+    }
+
+    .data-item {
+        flex-direction: column;
+        gap: 0.25rem;
+        text-align: left;
+    }
+
+    .data-label {
+        font-size: 0.8rem;
+    }
+
+    /* Настройки */
+    .settings-container {
+        gap: 1rem;
+    }
+
+    .settings-group {
+        padding: 1rem;
+    }
+
+    .setting-item {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .setting-item label {
+        justify-content: flex-start;
+    }
+
+    /* Premium секция */
+    .premium-card {
+        padding: 2rem 1rem;
+        margin: 1rem;
+    }
+
+    .premium-icon {
+        font-size: 3rem;
+    }
+
+    .premium-card h3 {
+        font-size: 1.5rem;
+    }
+
+    /* Уведомления */
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+    }
+
+    .toast {
+        max-width: none;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Языковой переключатель */
+    .language-switcher {
+        gap: 0.25rem;
+    }
+
+    .lang-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    /* Статус подключения */
+    .connection-status {
+        font-size: 0.8rem;
+    }
+
+    /* Загрузка */
+    .loading {
+        padding: 1rem;
+    }
+
+    .loading i {
+        font-size: 1.5rem;
+    }
+
+    /* Пустое состояние */
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+}
+
+/* Мобильная навигация */
+.mobile-fixed-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(26, 22, 51, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-color);
+    padding: 0.5rem;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.mobile-fixed-nav.scrolled {
+    transform: translateY(100%);
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-secondary);
+    flex: 1;
+    text-align: center;
+}
+
+.mobile-nav-item:hover {
+    background: rgba(138, 43, 226, 0.1);
+    color: var(--text-color);
+}
+
+.mobile-nav-item.active {
+    background: var(--gradient-primary);
+    color: var(--text-color);
+    box-shadow: var(--glow);
+}
+
+.mobile-nav-item i {
+    font-size: 1.2rem;
+}
+
+.mobile-nav-item span {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Адаптивные таблицы */
+@media (max-width: 768px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive table {
+        min-width: 600px;
+    }
+}
+
+/* Touch оптимизации */
+@media (hover: none) and (pointer: coarse) {
+    /* Увеличить области касания */
+    .btn, .nav-item, .mobile-nav-item {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Убрать hover эффекты на touch устройствах */
+    .btn:hover, .nav-item:hover, .mobile-nav-item:hover {
+        transform: none;
+    }
+
+    /* Добавить активные состояния */
+    .btn:active, .nav-item:active, .mobile-nav-item:active {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    /* Оптимизировать скролл */
+    .content, .modal-body {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Планшеты */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 200px 1fr;
+        gap: 1.5rem;
+    }
+
+    .navigation {
+        display: flex;
+    }
+
+    .mobile-fixed-nav {
+        display: none;
+    }
+
+    .content {
+        padding: 1.5rem;
+    }
+
+    .section-header {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .btn {
+        width: auto;
+    }
+
+    .form-actions {
+        flex-direction: row;
+    }
+}
+
+/* Большие экраны */
+@media (min-width: 1025px) {
+    .mobile-fixed-nav {
+        display: none;
+    }
+
+    .main-content {
+        margin-bottom: 0;
+    }
+}
+
+/* Портретная ориентация */
+@media (orientation: portrait) {
+    .modal-content {
+        width: 95%;
+        max-height: 85vh;
+    }
+
+    .email-content iframe {
+        height: 250px;
+    }
+}
+
+/* Альбомная ориентация */
+@media (orientation: landscape) and (max-height: 500px) {
+    .header {
+        padding: 0.25rem 0;
+    }
+
+    .main-content {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .content {
+        padding: 0.75rem;
+    }
+
+    .modal-content {
+        max-height: 95vh;
+    }
+
+    .mobile-fixed-nav {
+        padding: 0.25rem;
+    }
+
+    .mobile-nav-item {
+        padding: 0.25rem;
+    }
+
+    .mobile-nav-item span {
+        display: none;
+    }
+}
+
+/* Высокая плотность пикселей */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .logo i, .mobile-nav-item i {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+/* Темная тема для мобильных устройств */
+@media (prefers-color-scheme: dark) {
+    .mobile-fixed-nav {
+        background: rgba(15, 11, 33, 0.95);
+    }
+}
+
+/* Уменьшенная анимация */
+@media (prefers-reduced-motion: reduce) {
+    .mobile-fixed-nav {
+        transition: none;
+    }
+
+    .mobile-nav-item {
+        transition: none;
+    }
+
+    .btn, .nav-item {
+        transition: none;
+    }
+}
+
+/* Высокий контраст */
+@media (prefers-contrast: high) {
+    .mobile-fixed-nav {
+        border-top: 2px solid var(--text-color);
+    }
+
+    .mobile-nav-item {
+        border: 1px solid transparent;
+    }
+
+    .mobile-nav-item.active {
+        border-color: var(--text-color);
+    }
+}
+
+/* Специфичные стили для iOS */
+@supports (-webkit-touch-callout: none) {
+    .mobile-fixed-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .main-content {
+        margin-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Специфичные стили для Android */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .mobile-fixed-nav {
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    }
+}
