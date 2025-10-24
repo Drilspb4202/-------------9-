@@ -262,12 +262,14 @@ class MailSlurpApi {
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
-                    'x-api-key': apiKey
+                    'x-api-key': apiKey,
+                    'Accept': '*/*'
                 }
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             return await response.blob();
@@ -287,25 +289,67 @@ class MailSlurpApi {
         try {
             const blob = await this.getAttachment(attachmentId);
             
+            // Определяем MIME тип и расширение файла
+            const mimeType = blob.type || 'application/octet-stream';
+            const fileExtension = this.getFileExtensionFromMimeType(mimeType);
+            const finalFilename = filename.includes('.') ? filename : `${filename}${fileExtension}`;
+            
             // Создаем ссылку для скачивания
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = filename;
+            link.download = finalFilename;
+            link.style.display = 'none';
             
             // Добавляем ссылку в DOM, кликаем и удаляем
             document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
             
-            // Освобождаем память
-            window.URL.revokeObjectURL(url);
+            // Небольшая задержка перед удалением ссылки
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
             
             return true;
         } catch (error) {
             console.error('Ошибка скачивания вложения:', error);
             throw error;
         }
+    }
+
+    /**
+     * Получить расширение файла из MIME типа
+     * @param {string} mimeType - MIME тип
+     * @returns {string} Расширение файла
+     */
+    getFileExtensionFromMimeType(mimeType) {
+        const mimeToExt = {
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+            'application/pdf': '.pdf',
+            'text/plain': '.txt',
+            'text/html': '.html',
+            'application/msword': '.doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+            'application/vnd.ms-powerpoint': '.ppt',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+            'application/zip': '.zip',
+            'application/x-rar-compressed': '.rar',
+            'application/x-7z-compressed': '.7z',
+            'video/mp4': '.mp4',
+            'video/avi': '.avi',
+            'video/quicktime': '.mov',
+            'audio/mp3': '.mp3',
+            'audio/wav': '.wav',
+            'audio/ogg': '.ogg'
+        };
+        
+        return mimeToExt[mimeType] || '.bin';
     }
 
     /**

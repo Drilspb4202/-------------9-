@@ -553,36 +553,135 @@
 .attachment-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    padding: 12px;
-    background: rgba(138, 43, 226, 0.1);
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(177, 94, 255, 0.1));
     border: 1px solid rgba(138, 43, 226, 0.3);
-    border-radius: 8px;
-    margin-bottom: 8px;
+    border-radius: 12px;
+    margin-bottom: 12px;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.attachment-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .attachment-item:hover {
-    background: rgba(138, 43, 226, 0.2);
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(177, 94, 255, 0.2));
     border-color: var(--primary-color);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+    box-shadow: 0 6px 20px rgba(138, 43, 226, 0.3);
 }
 
-.attachment-item i {
-    color: var(--accent-color);
-    font-size: 1.2em;
+.attachment-item:hover::before {
+    opacity: 1;
 }
 
-.attachment-item span {
+.attachment-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     flex: 1;
-    font-weight: 500;
-    color: var(--text-color);
 }
 
-.attachment-item .btn {
-    padding: 6px 12px;
+.attachment-info i {
+    color: var(--accent-color);
+    font-size: 1.4em;
+    min-width: 24px;
+}
+
+.attachment-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.attachment-name {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.95em;
+    word-break: break-word;
+}
+
+.attachment-size {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.attachment-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.download-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.85em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
+    background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+}
+
+.download-btn:active {
+    transform: translateY(0);
+}
+
+.download-btn i {
     font-size: 0.9em;
+}
+
+.download-btn.loading {
+    background: linear-gradient(135deg, var(--info-color), #4fc3f7);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.download-btn.success {
+    background: linear-gradient(135deg, var(--success-color), #66bb6a);
+    animation: successPulse 0.6s ease;
+}
+
+.download-btn.error {
+    background: linear-gradient(135deg, var(--error-color), #ef5350);
+    animation: errorShake 0.6s ease;
+}
+
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
 }
 
 /* Стили для модального окна просмотра письма */
@@ -602,4 +701,146 @@
 
 #email-attachments h4 i {
     color: var(--accent-color);
+}
+
+/* Стили для дубликатов писем */
+.email-item.duplicate {
+    border-left: 4px solid var(--warning-color);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
+}
+
+.duplicate-warning {
+    color: var(--warning-color);
+    margin-right: 8px;
+    font-size: 0.9em;
+    animation: pulse 2s infinite;
+}
+
+.duplicate-notice {
+    color: var(--warning-color);
+    font-size: 0.8em;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: rgba(255, 193, 7, 0.1);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.duplicate-notice i {
+    font-size: 0.9em;
+}
+
+/* Улучшенные стили для списка писем */
+.email-item {
+    background: linear-gradient(135deg, rgba(26, 22, 51, 0.8), rgba(26, 22, 51, 0.6));
+    border: 1px solid rgba(138, 43, 226, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.email-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.email-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.3);
+    border-color: var(--primary-color);
+}
+
+.email-item:hover::before {
+    opacity: 1;
+}
+
+.email-item.unread {
+    border-left: 4px solid var(--primary-color);
+    background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(177, 94, 255, 0.1));
+}
+
+.email-item.read {
+    opacity: 0.8;
+}
+
+.email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.email-subject {
+    flex: 1;
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.email-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.email-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.email-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.email-preview {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    line-height: 1.4;
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(138, 43, 226, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+}
+
+/* Адаптивность для писем */
+@media (max-width: 768px) {
+    .email-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+    }
+    
+    .email-actions {
+        justify-content: center;
+    }
+    
+    .email-meta {
+        grid-template-columns: 1fr;
+    }
 }

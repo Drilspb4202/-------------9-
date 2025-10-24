@@ -350,11 +350,13 @@ class MailSlurpUI {
         const receivedDate = new Date(email.createdAt);
         const isRead = email.read || false;
         const hasAttachments = email.attachments && email.attachments.length > 0;
+        const isDuplicate = email._isDuplicate || false;
         
         return `
-            <div class="email-item ${isRead ? 'read' : 'unread'}" data-email-id="${email.id}">
+            <div class="email-item ${isRead ? 'read' : 'unread'} ${isDuplicate ? 'duplicate' : ''}" data-email-id="${email.id}">
                 <div class="email-header">
                     <div class="email-subject">
+                        ${isDuplicate ? '<i class="fas fa-exclamation-triangle duplicate-warning" title="Возможный дубликат"></i>' : ''}
                         ${email.subject || '(Без темы)'}
                         ${hasAttachments ? '<i class="fas fa-paperclip attachment-indicator" title="Есть вложения"></i>' : ''}
                     </div>
@@ -371,6 +373,7 @@ class MailSlurpUI {
                     <div><strong>${this.app.i18n.t('email_from')}</strong> ${email.from || 'Неизвестно'}</div>
                     <div><strong>${this.app.i18n.t('email_date')}</strong> ${this.app.i18n.formatDate(receivedDate)}</div>
                     ${hasAttachments ? `<div><strong>Вложения:</strong> ${email.attachments.length}</div>` : ''}
+                    ${isDuplicate ? '<div class="duplicate-notice"><i class="fas fa-info-circle"></i> Возможный дубликат</div>' : ''}
                 </div>
                 ${email.body ? `<div class="email-preview">${this.truncateText(email.body, 100)}</div>` : ''}
             </div>
@@ -427,15 +430,31 @@ class MailSlurpUI {
         
         if (email.attachments && email.attachments.length > 0) {
             attachmentsContainer.style.display = 'block';
-            attachmentsList.innerHTML = email.attachments.map(attachment => `
-                <div class="attachment-item">
-                    <i class="fas fa-paperclip"></i>
-                    <span>${attachment.filename || 'Вложение'}</span>
-                    <button class="btn btn-small btn-secondary" onclick="window.mailSlurpApp.downloadAttachment('${attachment.id}')">
-                        <i class="fas fa-download"></i>
-                    </button>
-                </div>
-            `).join('');
+            attachmentsList.innerHTML = email.attachments.map(attachment => {
+                const filename = attachment.filename || attachment.name || 'Вложение';
+                const fileSize = attachment.contentLength ? this.formatFileSize(attachment.contentLength) : '';
+                const mimeType = attachment.contentType || 'application/octet-stream';
+                const fileIcon = this.getFileIcon(mimeType);
+                
+                return `
+                    <div class="attachment-item" data-attachment-id="${attachment.id}">
+                        <div class="attachment-info">
+                            <i class="${fileIcon}"></i>
+                            <div class="attachment-details">
+                                <span class="attachment-name">${filename}</span>
+                                ${fileSize ? `<span class="attachment-size">${fileSize}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="attachment-actions">
+                            <button class="btn btn-small btn-secondary download-btn" 
+                                    onclick="window.mailSlurpApp.downloadAttachment('${attachment.id}', '${filename}')"
+                                    title="Скачать вложение">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         } else {
             attachmentsContainer.style.display = 'none';
         }
@@ -691,6 +710,61 @@ class MailSlurpUI {
                 text.textContent = this.app.i18n.t('disconnected');
                 text.parentElement.classList.add('disconnected');
             }
+        }
+    }
+
+    /**
+     * Форматировать размер файла
+     * @param {number} bytes - Размер в байтах
+     * @returns {string} Отформатированный размер
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Получить иконку файла по MIME типу
+     * @param {string} mimeType - MIME тип
+     * @returns {string} CSS класс иконки
+     */
+    getFileIcon(mimeType) {
+        if (mimeType.startsWith('image/')) {
+            return 'fas fa-file-image';
+        } else if (mimeType.startsWith('video/')) {
+            return 'fas fa-file-video';
+        } else if (mimeType.startsWith('audio/')) {
+            return 'fas fa-file-audio';
+        } else if (mimeType === 'application/pdf') {
+            return 'fas fa-file-pdf';
+        } else if (mimeType.includes('word') || mimeType.includes('document')) {
+            return 'fas fa-file-word';
+        } else if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) {
+            return 'fas fa-file-excel';
+        } else if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) {
+            return 'fas fa-file-powerpoint';
+        } else if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('7z')) {
+            return 'fas fa-file-archive';
+        } else if (mimeType.startsWith('text/')) {
+            return 'fas fa-file-alt';
+        } else {
+            return 'fas fa-file';
+        }
+    }
+
+    /**
+     * Скачать вложение (глобальная функция)
+     * @param {string} attachmentId - ID вложения
+     * @param {string} filename - Имя файла
+     */
+    downloadAttachment(attachmentId, filename) {
+        if (this.app) {
+            this.app.downloadAttachment(attachmentId, filename);
         }
     }
 }

@@ -16,6 +16,10 @@ class MailSlurpApp {
         this.currentInboxId = null;
         this.isInitialized = false;
         
+        // Кэш для писем
+        this.emailCache = new Map();
+        this.cacheExpiry = 5 * 60 * 1000; // 5 минут
+        
         // Настройки
         this.settings = {
             autoDeleteInboxes: true,
@@ -210,14 +214,32 @@ class MailSlurpApp {
     /**
      * Загрузить письма для ящика
      * @param {string} inboxId - ID ящика
+     * @param {boolean} forceRefresh - Принудительное обновление
      */
-    async loadEmailsForInbox(inboxId) {
+    async loadEmailsForInbox(inboxId, forceRefresh = false) {
         try {
             this.currentInboxId = inboxId;
             this.ui.showLoading('emails-section');
             
+            // Проверяем кэш, если не принудительное обновление
+            if (!forceRefresh) {
+                const cachedEmails = this.getCachedEmails(inboxId);
+                if (cachedEmails) {
+                    this.emails = cachedEmails;
+                    this.ui.updateEmailsList(this.emails);
+                    this.ui.hideLoading('emails-section');
+                    return this.emails;
+                }
+            }
+            
             const emails = await this.api.getEmails(inboxId, { size: 50 });
-            this.emails = emails || [];
+            const newEmails = emails || [];
+            
+            // 去重逻辑 - 合并新邮件 с существующими, избегая дубликатов
+            this.emails = this.deduplicateEmails([...this.emails, ...newEmails]);
+            
+            // Сохраняем в кэш
+            this.setCachedEmails(inboxId, this.emails);
             
             this.ui.updateEmailsList(this.emails);
             this.ui.hideLoading('emails-section');
@@ -246,7 +268,133 @@ class MailSlurpApp {
      */
     async refreshEmails() {
         if (this.currentInboxId) {
-            await this.loadEmailsForInbox(this.currentInboxId);
+            // Очищаем кэш для текущего ящика и принудительно обновляем
+            this.clearEmailCache(this.currentInboxId);
+            await this.loadEmailsForInbox(this.currentInboxId, true);
+        }
+    }
+
+    /**
+     * Удалить дубликаты писем
+     * @param {Array} emails - Массив писем
+     * @returns {Array} Массив без дубликатов
+     */
+    deduplicateEmails(emails) {
+        const seen = new Set();
+        const uniqueEmails = [];
+        let duplicateCount = 0;
+
+        for (const email of emails) {
+            // Создаем уникальный ключ на основе ID письма и содержимого
+            const emailKey = this.createEmailKey(email);
+            
+            if (!seen.has(emailKey)) {
+                seen.add(emailKey);
+                uniqueEmails.push(email);
+            } else {
+                duplicateCount++;
+                console.log('Обнаружен дубликат письма:', email.subject || '(Без темы)');
+            }
+        }
+
+        if (duplicateCount > 0) {
+            this.ui.showToast(`Удалено ${duplicateCount} дубликатов писем`, 'info');
+        }
+
+        // Сортируем по дате создания (новые сверху)
+        return uniqueEmails.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    /**
+     * Создать уникальный ключ для письма
+     * @param {Object} email - Письмо
+     * @returns {string} Уникальный ключ
+     */
+    createEmailKey(email) {
+        // Используем ID письма как основной ключ
+        if (email.id) {
+            return `id:${email.id}`;
+        }
+        
+        // Если ID нет, создаем ключ на основе содержимого
+        const content = `${email.from || ''}-${email.subject || ''}-${email.body || ''}-${email.createdAt || ''}`;
+        return `content:${this.hashString(content)}`;
+    }
+
+    /**
+     * Создать хеш строки
+     * @param {string} str - Строка
+     * @returns {string} Хеш
+     */
+    hashString(str) {
+        let hash = 0;
+        if (str.length === 0) return hash.toString();
+        
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        
+        return Math.abs(hash).toString(36);
+    }
+
+    /**
+     * Получить кэшированные письма
+     * @param {string} inboxId - ID ящика
+     * @returns {Array|null} Кэшированные письма или null
+     */
+    getCachedEmails(inboxId) {
+        const cacheKey = `emails_${inboxId}`;
+        const cached = this.emailCache.get(cacheKey);
+        
+        if (cached && (Date.now() - cached.timestamp) < this.cacheExpiry) {
+            console.log('Используем кэшированные письма для ящика:', inboxId);
+            return cached.emails;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Сохранить письма в кэш
+     * @param {string} inboxId - ID ящика
+     * @param {Array} emails - Письма
+     */
+    setCachedEmails(inboxId, emails) {
+        const cacheKey = `emails_${inboxId}`;
+        this.emailCache.set(cacheKey, {
+            emails: [...emails],
+            timestamp: Date.now()
+        });
+        console.log('Письма сохранены в кэш для ящика:', inboxId);
+    }
+
+    /**
+     * Очистить кэш писем
+     * @param {string} inboxId - ID ящика (опционально)
+     */
+    clearEmailCache(inboxId = null) {
+        if (inboxId) {
+            const cacheKey = `emails_${inboxId}`;
+            this.emailCache.delete(cacheKey);
+            console.log('Кэш очищен для ящика:', inboxId);
+        } else {
+            this.emailCache.clear();
+            console.log('Весь кэш писем очищен');
+        }
+    }
+
+    /**
+     * Очистить устаревший кэш
+     */
+    clearExpiredCache() {
+        const now = Date.now();
+        for (const [key, value] of this.emailCache.entries()) {
+            if (now - value.timestamp > this.cacheExpiry) {
+                this.emailCache.delete(key);
+                console.log('Удален устаревший кэш:', key);
+            }
         }
     }
 
@@ -418,9 +566,17 @@ class MailSlurpApp {
                 try {
                     const newEmail = await this.api.waitForLatestEmail(this.currentInboxId, 1);
                     if (newEmail) {
-                        this.emails.unshift(newEmail);
-                        this.ui.updateEmailsList(this.emails);
-                        this.ui.showToast('Получено новое письмо!', 'info');
+                        // Проверяем, не является ли письмо дубликатом
+                        const emailKey = this.createEmailKey(newEmail);
+                        const isDuplicate = this.emails.some(email => this.createEmailKey(email) === emailKey);
+                        
+                        if (!isDuplicate) {
+                            this.emails.unshift(newEmail);
+                            this.ui.updateEmailsList(this.emails);
+                            this.ui.showToast('Получено новое письмо!', 'info');
+                        } else {
+                            console.log('Получено дубликат письма, игнорируем:', newEmail.subject || '(Без темы)');
+                        }
                     }
                 } catch (error) {
                     // Игнорируем ошибки таймаута
@@ -432,27 +588,146 @@ class MailSlurpApp {
         setInterval(() => {
             this.checkApiConnection();
         }, 5 * 60 * 1000);
+        
+        // Очистка устаревшего кэша каждые 10 минут
+        setInterval(() => {
+            this.clearExpiredCache();
+        }, 10 * 60 * 1000);
     }
 
     /**
      * Скачать вложение
      * @param {string} attachmentId - ID вложения
+     * @param {string} filename - Имя файла
      */
-    async downloadAttachment(attachmentId) {
+    async downloadAttachment(attachmentId, filename = 'attachment') {
         try {
-            const attachment = await this.api.getAttachment(attachmentId);
+            // Показываем прогресс
+            this.ui.showToast('Начинаем скачивание вложения...', 'info');
             
-            // Создать ссылку для скачивания
-            const link = document.createElement('a');
-            link.href = attachment.downloadUrl;
-            link.download = attachment.filename || 'attachment';
-            link.click();
+            // Обновляем UI кнопки скачивания
+            this.updateDownloadButton(attachmentId, 'loading');
             
-            this.ui.showToast('Вложение скачивается...', 'info');
+            // Получаем информацию о вложении
+            const attachmentInfo = await this.getAttachmentInfo(attachmentId);
+            
+            if (attachmentInfo) {
+                this.ui.showToast(`Скачиваем ${attachmentInfo.filename || filename} (${this.formatFileSize(attachmentInfo.size || 0)})...`, 'info');
+            }
+            
+            await this.api.downloadAttachment(attachmentId, filename);
+            
+            // Восстанавливаем кнопку
+            this.updateDownloadButton(attachmentId, 'success');
+            this.ui.showToast('Вложение успешно скачано!', 'success');
+            
         } catch (error) {
             console.error('Ошибка скачивания вложения:', error);
-            this.ui.showToast('Ошибка скачивания вложения', 'error');
+            
+            // Восстанавливаем кнопку
+            this.updateDownloadButton(attachmentId, 'error');
+            
+            // Показываем детальную ошибку
+            let errorMessage = 'Ошибка скачивания вложения';
+            if (error.message.includes('404')) {
+                errorMessage = 'Вложение не найдено';
+            } else if (error.message.includes('403')) {
+                errorMessage = 'Нет доступа к вложению';
+            } else if (error.message.includes('401')) {
+                errorMessage = 'Ошибка авторизации';
+            } else if (error.message.includes('timeout')) {
+                errorMessage = 'Превышено время ожидания';
+            } else {
+                errorMessage = `Ошибка: ${error.message}`;
+            }
+            
+            this.ui.showToast(errorMessage, 'error');
         }
+    }
+
+    /**
+     * Получить информацию о вложении
+     * @param {string} attachmentId - ID вложения
+     * @returns {Promise<Object|null>} Информация о вложении
+     */
+    async getAttachmentInfo(attachmentId) {
+        try {
+            // Попробуем получить информацию из письма
+            for (const email of this.emails) {
+                if (email.attachments) {
+                    const attachment = email.attachments.find(att => att.id === attachmentId);
+                    if (attachment) {
+                        return attachment;
+                    }
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Ошибка получения информации о вложении:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Обновить кнопку скачивания
+     * @param {string} attachmentId - ID вложения
+     * @param {string} state - Состояние (loading, success, error, normal)
+     */
+    updateDownloadButton(attachmentId, state) {
+        const attachmentItem = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+        if (!attachmentItem) return;
+
+        const button = attachmentItem.querySelector('.download-btn');
+        if (!button) return;
+
+        const icon = button.querySelector('i');
+        
+        switch (state) {
+            case 'loading':
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Скачивание...';
+                button.classList.add('loading');
+                break;
+            case 'success':
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-check"></i> Скачано';
+                button.classList.remove('loading');
+                button.classList.add('success');
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-download"></i>';
+                    button.classList.remove('success');
+                }, 2000);
+                break;
+            case 'error':
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ошибка';
+                button.classList.remove('loading');
+                button.classList.add('error');
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-download"></i>';
+                    button.classList.remove('error');
+                }, 3000);
+                break;
+            default:
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-download"></i>';
+                button.classList.remove('loading', 'success', 'error');
+        }
+    }
+
+    /**
+     * Форматировать размер файла
+     * @param {number} bytes - Размер в байтах
+     * @returns {string} Отформатированный размер
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     /**
