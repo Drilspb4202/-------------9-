@@ -54,7 +54,28 @@ class MailSlurpApi {
                     throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
                 }
 
-                return await response.json();
+                // Для DELETE запросов и ответов без содержимого возвращаем true
+                const contentLength = response.headers.get('content-length');
+                const method = (options.method || '').toUpperCase();
+                
+                // Если нет содержимого или это DELETE запрос, возвращаем успешный результат
+                if (method === 'DELETE' || contentLength === '0' || response.status === 204) {
+                    return true;
+                }
+                
+                // Проверяем, есть ли текст для парсинга
+                const text = await response.text();
+                if (!text || text.trim() === '') {
+                    return true;
+                }
+                
+                // Пытаемся распарсить JSON
+                try {
+                    return JSON.parse(text);
+                } catch (parseError) {
+                    // Если не JSON, возвращаем текст
+                    return text;
+                }
             } catch (error) {
                 clearTimeout(timeoutId);
                 throw error;
