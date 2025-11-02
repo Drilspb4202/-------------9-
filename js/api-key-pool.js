@@ -7,13 +7,6 @@ class ApiKeyPool {
         // Публичные API ключи, предоставленные Khan
         this.publicKeys = [
             { 
-                key: "69c1983367897df2e0f28e68eeab1567312e7b8cb63b32924b13f09b4e5ef959", 
-                usageCount: 0, 
-                isExhausted: false,
-                lastUsed: null,
-                errorCount: 0
-            },
-            { 
                 key: "0d71400fe28471738cf0b933ffaa701d9ce7d9e09e07d52c271753c387f8bfcb", 
                 usageCount: 0, 
                 isExhausted: false,
@@ -22,6 +15,20 @@ class ApiKeyPool {
             },
             { 
                 key: "07da08f927f3c354bddcba093f38ee83f37ee265c7e1000e35a4ef236e5a43cb", 
+                usageCount: 0, 
+                isExhausted: false,
+                lastUsed: null,
+                errorCount: 0
+            },
+            { 
+                key: "615e97d0cc2a0d5ac60f884cab3bf867b473b2733b1f6abfeb429019476dc9c7", 
+                usageCount: 0, 
+                isExhausted: false,
+                lastUsed: null,
+                errorCount: 0
+            },
+            { 
+                key: "713f7c889bfee18957c7e58eab48fb76e525001b98e50dfd473e87d30e91d9e7", 
                 usageCount: 0, 
                 isExhausted: false,
                 lastUsed: null,

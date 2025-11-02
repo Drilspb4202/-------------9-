@@ -21,7 +21,7 @@ class MailSlurpApp {
             autoDeleteInboxes: true,
             enableNotifications: true,
             emailCheckInterval: 5000,
-            inboxLifetime: 5 * 60 * 1000 // 5 минут
+            inboxLifetime: 10 * 60 * 1000 // 10 минут
         };
         
         this.init();
@@ -213,11 +213,35 @@ class MailSlurpApp {
      */
     async loadEmailsForInbox(inboxId) {
         try {
+            // Переключиться на вкладку с письмами
+            this.ui.showSection('emails-section');
+            
             this.currentInboxId = inboxId;
+            
+            // Обновить селектор ящиков на вкладке писем
+            const inboxSelector = document.getElementById('inbox-selector');
+            if (inboxSelector) {
+                inboxSelector.value = inboxId;
+            }
+            
             this.ui.showLoading('emails-section');
             
             const emails = await this.api.getEmails(inboxId, { size: 50 });
-            this.emails = emails || [];
+            
+            // Убрать дубликаты по ID писем
+            const uniqueEmails = [];
+            const emailIds = new Set();
+            
+            if (emails && emails.length > 0) {
+                for (const email of emails) {
+                    if (!emailIds.has(email.id)) {
+                        emailIds.add(email.id);
+                        uniqueEmails.push(email);
+                    }
+                }
+            }
+            
+            this.emails = uniqueEmails;
             
             this.ui.updateEmailsList(this.emails);
             this.ui.hideLoading('emails-section');
@@ -397,11 +421,39 @@ class MailSlurpApp {
     scheduleInboxDeletion(inboxId) {
         setTimeout(async () => {
             try {
+                // Попытаться удалить все письма ящика перед удалением самого ящика
+                // Примечание: При удалении ящика через MailSlurp API все письма удаляются автоматически,
+                // но мы все равно пытаемся удалить их вручную для гарантии
+                try {
+                    const emails = await this.api.getEmails(inboxId, { size: 100 });
+                    if (emails && emails.length > 0) {
+                        for (const email of emails) {
+                            try {
+                                await this.api.deleteEmail(email.id);
+                            } catch (emailError) {
+                                // Игнорируем ошибки удаления отдельных писем
+                                // они удалятся автоматически при удалении ящика
+                            }
+                        }
+                    }
+                } catch (emailsError) {
+                    // Игнорируем ошибки при получении списка писем
+                    // ящик все равно будет удален
+                }
+                
                 await this.api.deleteInbox(inboxId);
                 this.inboxes = this.inboxes.filter(inbox => inbox.id !== inboxId);
                 this.ui.updateInboxesList(this.inboxes);
                 this.ui.updateInboxSelector(this.inboxes);
-                console.log(`Ящик ${inboxId} автоматически удален`);
+                
+                // Очистить письма если это текущий ящик
+                if (this.currentInboxId === inboxId) {
+                    this.emails = [];
+                    this.ui.updateEmailsList(this.emails);
+                    this.currentInboxId = null;
+                }
+                
+                console.log(`Ящик ${inboxId} и его письма автоматически удалены`);
             } catch (error) {
                 console.error('Ошибка автоудаления ящика:', error);
             }
@@ -418,9 +470,13 @@ class MailSlurpApp {
                 try {
                     const newEmail = await this.api.waitForLatestEmail(this.currentInboxId, 1);
                     if (newEmail) {
-                        this.emails.unshift(newEmail);
-                        this.ui.updateEmailsList(this.emails);
-                        this.ui.showToast('Получено новое письмо!', 'info');
+                        // Проверяем, нет ли уже этого письма в списке
+                        const emailExists = this.emails.some(email => email.id === newEmail.id);
+                        if (!emailExists) {
+                            this.emails.unshift(newEmail);
+                            this.ui.updateEmailsList(this.emails);
+                            this.ui.showToast('Получено новое письмо!', 'info');
+                        }
                     }
                 } catch (error) {
                     // Игнорируем ошибки таймаута

@@ -146,7 +146,7 @@ class MailSlurpApi {
                 body: JSON.stringify({
                     name: options.name || `NeuroMail-${Date.now()}`,
                     description: options.description || 'Временный почтовый ящик',
-                    expiresAt: options.expiresAt || new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 минут
+                    expiresAt: options.expiresAt || new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 минут
                     ...options
                 })
             });
