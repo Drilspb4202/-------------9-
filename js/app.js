@@ -16,12 +16,17 @@ class MailSlurpApp {
         this.currentInboxId = null;
         this.isInitialized = false;
         
+        // Отслеживание времени создания писем для автоудаления
+        this.emailTimestamps = new Map(); // emailId -> createdAt timestamp
+        this.emailDeletionTimers = new Map(); // emailId -> timer ID
+        
         // Настройки
         this.settings = {
             autoDeleteInboxes: true,
             enableNotifications: true,
             emailCheckInterval: 5000,
-            inboxLifetime: 10 * 60 * 1000 // 10 минут
+            inboxLifetime: 10 * 60 * 1000, // 10 минут
+            emailLifetime: 10 * 60 * 1000 // 10 минут для писем
         };
         
         this.init();
@@ -126,15 +131,33 @@ class MailSlurpApp {
         try {
             this.ui.showModal('create-inbox-modal');
             
+            // Удалить все старые ящики перед созданием нового
+            await this.deleteAllInboxes();
+            
+            // Обновить UI после удаления
+            this.ui.updateInboxesList([]);
+            this.ui.updateInboxSelector([]);
+            
+            // Небольшая задержка для завершения удаления на сервере
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const inbox = await this.api.createInbox({
                 name: `NeuroMail-${Date.now()}`,
                 description: 'Временный почтовый ящик',
                 expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
             });
             
-            this.inboxes.unshift(inbox);
+            // Очистить массив ящиков и добавить только новый
+            this.inboxes = [inbox];
             this.ui.updateInboxesList(this.inboxes);
             this.ui.updateInboxSelector(this.inboxes);
+            
+            // Очистить письма при создании нового ящика
+            this.emails = [];
+            this.emailTimestamps.clear();
+            this.clearAllEmailTimers();
+            this.ui.updateEmailsList(this.emails);
+            this.currentInboxId = null;
             
             this.ui.hideModal('create-inbox-modal');
             this.ui.showToast(this.i18n.t('inbox_created_success'), 'success');
@@ -161,7 +184,40 @@ class MailSlurpApp {
             this.ui.showLoading('inboxes-section');
             
             const inboxes = await this.api.getInboxes({ size: 50 });
-            this.inboxes = inboxes || [];
+            const allInboxes = inboxes || [];
+            
+            // Если ящиков больше одного, оставить только самый новый
+            if (allInboxes.length > 1) {
+                // Сортировать по дате создания (самый новый первый)
+                allInboxes.sort((a, b) => {
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return dateB - dateA; // Новые сначала
+                });
+                
+                // Удалить все ящики, кроме самого нового
+                const newestInbox = allInboxes[0];
+                const inboxesToDelete = allInboxes.slice(1);
+                
+                console.log(`Найдено ${allInboxes.length} ящиков, оставляем только самый новый (${newestInbox.id})`);
+                
+                // Удалить все старые ящики с сервера
+                for (const inbox of inboxesToDelete) {
+                    try {
+                        await this.api.deleteInbox(inbox.id);
+                        console.log(`Старый ящик ${inbox.id} удален`);
+                    } catch (error) {
+                        console.warn(`Не удалось удалить ящик ${inbox.id}:`, error);
+                    }
+                }
+                
+                this.inboxes = [newestInbox];
+            } else {
+                this.inboxes = allInboxes;
+            }
+            
+            // Удалить старые ящики (старше 10 минут)
+            await this.cleanupOldInboxes();
             
             this.ui.updateInboxesList(this.inboxes);
             this.ui.updateInboxSelector(this.inboxes);
@@ -195,6 +251,11 @@ class MailSlurpApp {
             
             // Очистить письма если это текущий ящик
             if (this.currentInboxId === inboxId) {
+                // Очистить все таймеры писем этого ящика
+                for (const email of this.emails) {
+                    this.emailTimestamps.delete(email.id);
+                    this.clearEmailTimer(email.id);
+                }
                 this.emails = [];
                 this.ui.updateEmailsList(this.emails);
                 this.currentInboxId = null;
@@ -237,11 +298,45 @@ class MailSlurpApp {
                     if (!emailIds.has(email.id)) {
                         emailIds.add(email.id);
                         uniqueEmails.push(email);
+                        
+                        // Если это новое письмо, запланировать его удаление
+                        if (!this.emailTimestamps.has(email.id)) {
+                            const createdAt = new Date(email.createdAt).getTime();
+                            this.emailTimestamps.set(email.id, createdAt);
+                            this.scheduleEmailDeletion(email.id, createdAt);
+                        }
                     }
                 }
             }
             
-            this.emails = uniqueEmails;
+            // Удалить старые письма (старше 10 минут)
+            await this.cleanupOldEmails();
+            
+            // Обновить список писем, оставив только те, которые есть в API и не удалены
+            const updatedEmails = [];
+            
+            // Добавить все письма из API (они уже без дубликатов)
+            for (const email of uniqueEmails) {
+                updatedEmails.push(email);
+            }
+            
+            // Добавить существующие письма, которых нет в API, но они еще не старые
+            for (const email of this.emails) {
+                if (!emailIds.has(email.id)) {
+                    // Проверить, не старое ли это письмо
+                    const createdAt = this.emailTimestamps.get(email.id) || new Date(email.createdAt).getTime();
+                    const age = Date.now() - createdAt;
+                    if (age < this.settings.emailLifetime) {
+                        updatedEmails.push(email);
+                    } else {
+                        // Удалить старое письмо из локального хранилища
+                        this.emailTimestamps.delete(email.id);
+                        this.clearEmailTimer(email.id);
+                    }
+                }
+            }
+            
+            this.emails = updatedEmails;
             
             this.ui.updateEmailsList(this.emails);
             this.ui.hideLoading('emails-section');
@@ -301,6 +396,8 @@ class MailSlurpApp {
             await this.api.deleteEmail(emailId);
             
             this.emails = this.emails.filter(email => email.id !== emailId);
+            this.emailTimestamps.delete(emailId);
+            this.clearEmailTimer(emailId);
             this.ui.updateEmailsList(this.emails);
             
             this.ui.showToast(this.i18n.t('email_deleted_success'), 'success');
@@ -415,6 +512,200 @@ class MailSlurpApp {
     }
 
     /**
+     * Удалить все почтовые ящики
+     */
+    async deleteAllInboxes() {
+        try {
+            // Сначала загрузить все ящики с сервера
+            const allInboxes = await this.api.getInboxes({ size: 100 });
+            const inboxesToDelete = allInboxes || [];
+            
+            console.log(`Найдено ящиков для удаления: ${inboxesToDelete.length}`);
+            
+            // Удалить все ящики с сервера
+            const deletePromises = inboxesToDelete.map(async (inbox) => {
+                try {
+                    await this.api.deleteInbox(inbox.id);
+                    console.log(`Ящик ${inbox.id} удален с сервера`);
+                    return true;
+                } catch (error) {
+                    console.warn(`Не удалось удалить ящик ${inbox.id}:`, error);
+                    return false;
+                }
+            });
+            
+            // Дождаться удаления всех ящиков
+            await Promise.all(deletePromises);
+            
+            // Очистить локальные данные
+            this.inboxes = [];
+            this.emails = [];
+            this.emailTimestamps.clear();
+            this.clearAllEmailTimers();
+            this.currentInboxId = null;
+            
+            // Обновить UI
+            this.ui.updateInboxesList([]);
+            this.ui.updateInboxSelector([]);
+            
+            console.log(`Все старые ящики удалены (${inboxesToDelete.length} шт.)`);
+        } catch (error) {
+            console.error('Ошибка удаления всех ящиков:', error);
+            // Все равно очистить локальные данные
+            this.inboxes = [];
+            this.emails = [];
+            this.emailTimestamps.clear();
+            this.clearAllEmailTimers();
+            this.currentInboxId = null;
+            // Обновить UI
+            this.ui.updateInboxesList([]);
+            this.ui.updateInboxSelector([]);
+        }
+    }
+
+    /**
+     * Удалить старые ящики (старше 10 минут)
+     */
+    async cleanupOldInboxes() {
+        try {
+            const now = Date.now();
+            const inboxesToDelete = [];
+            
+            for (const inbox of this.inboxes) {
+                const createdAt = new Date(inbox.createdAt).getTime();
+                const age = now - createdAt;
+                
+                if (age > this.settings.inboxLifetime) {
+                    inboxesToDelete.push(inbox);
+                }
+            }
+            
+            for (const inbox of inboxesToDelete) {
+                try {
+                    await this.api.deleteInbox(inbox.id);
+                    this.inboxes = this.inboxes.filter(i => i.id !== inbox.id);
+                    
+                    // Очистить письма если это текущий ящик
+                    if (this.currentInboxId === inbox.id) {
+                        this.emails = [];
+                        this.emailTimestamps.clear();
+                        this.clearAllEmailTimers();
+                        this.currentInboxId = null;
+                    }
+                    
+                    console.log(`Старый ящик ${inbox.id} удален (возраст: ${Math.round(age / 1000 / 60)} минут)`);
+                } catch (error) {
+                    console.warn(`Не удалось удалить старый ящик ${inbox.id}:`, error);
+                }
+            }
+            
+            if (inboxesToDelete.length > 0) {
+                this.ui.updateInboxesList(this.inboxes);
+                this.ui.updateInboxSelector(this.inboxes);
+            }
+        } catch (error) {
+            console.error('Ошибка очистки старых ящиков:', error);
+        }
+    }
+
+    /**
+     * Удалить старые письма (старше 10 минут)
+     */
+    async cleanupOldEmails() {
+        try {
+            const now = Date.now();
+            const emailsToDelete = [];
+            
+            for (const email of this.emails) {
+                const createdAt = this.emailTimestamps.get(email.id) || new Date(email.createdAt).getTime();
+                const age = now - createdAt;
+                
+                if (age > this.settings.emailLifetime) {
+                    emailsToDelete.push(email);
+                }
+            }
+            
+            for (const email of emailsToDelete) {
+                try {
+                    await this.api.deleteEmail(email.id);
+                    this.emails = this.emails.filter(e => e.id !== email.id);
+                    this.emailTimestamps.delete(email.id);
+                    this.clearEmailTimer(email.id);
+                    console.log(`Старое письмо ${email.id} удалено (возраст: ${Math.round(age / 1000 / 60)} минут)`);
+                } catch (error) {
+                    console.warn(`Не удалось удалить старое письмо ${email.id}:`, error);
+                    // Удалить из локального списка даже если API запрос не удался
+                    this.emails = this.emails.filter(e => e.id !== email.id);
+                    this.emailTimestamps.delete(email.id);
+                    this.clearEmailTimer(email.id);
+                }
+            }
+            
+            if (emailsToDelete.length > 0) {
+                this.ui.updateEmailsList(this.emails);
+            }
+        } catch (error) {
+            console.error('Ошибка очистки старых писем:', error);
+        }
+    }
+
+    /**
+     * Запланировать автоудаление письма через 10 минут
+     * @param {string} emailId - ID письма
+     * @param {number} createdAt - Время создания письма в миллисекундах
+     */
+    scheduleEmailDeletion(emailId, createdAt) {
+        // Очистить существующий таймер если есть
+        this.clearEmailTimer(emailId);
+        
+        const now = Date.now();
+        const age = now - createdAt;
+        const remainingTime = Math.max(0, this.settings.emailLifetime - age);
+        
+        const timerId = setTimeout(async () => {
+            try {
+                await this.api.deleteEmail(emailId);
+                this.emails = this.emails.filter(e => e.id !== emailId);
+                this.emailTimestamps.delete(emailId);
+                this.emailDeletionTimers.delete(emailId);
+                this.ui.updateEmailsList(this.emails);
+                console.log(`Письмо ${emailId} автоматически удалено через 10 минут`);
+            } catch (error) {
+                console.error(`Ошибка автоудаления письма ${emailId}:`, error);
+                // Удалить из локального списка даже если API запрос не удался
+                this.emails = this.emails.filter(e => e.id !== emailId);
+                this.emailTimestamps.delete(emailId);
+                this.emailDeletionTimers.delete(emailId);
+                this.ui.updateEmailsList(this.emails);
+            }
+        }, remainingTime);
+        
+        this.emailDeletionTimers.set(emailId, timerId);
+    }
+
+    /**
+     * Очистить таймер удаления письма
+     * @param {string} emailId - ID письма
+     */
+    clearEmailTimer(emailId) {
+        const timerId = this.emailDeletionTimers.get(emailId);
+        if (timerId) {
+            clearTimeout(timerId);
+            this.emailDeletionTimers.delete(emailId);
+        }
+    }
+
+    /**
+     * Очистить все таймеры удаления писем
+     */
+    clearAllEmailTimers() {
+        for (const timerId of this.emailDeletionTimers.values()) {
+            clearTimeout(timerId);
+        }
+        this.emailDeletionTimers.clear();
+    }
+
+    /**
      * Запланировать автоудаление ящика
      * @param {string} inboxId - ID ящика
      */
@@ -430,9 +721,15 @@ class MailSlurpApp {
                         for (const email of emails) {
                             try {
                                 await this.api.deleteEmail(email.id);
+                                // Очистить таймеры и метаданные письма
+                                this.emailTimestamps.delete(email.id);
+                                this.clearEmailTimer(email.id);
                             } catch (emailError) {
                                 // Игнорируем ошибки удаления отдельных писем
                                 // они удалятся автоматически при удалении ящика
+                                // Но все равно очищаем локальные данные
+                                this.emailTimestamps.delete(email.id);
+                                this.clearEmailTimer(email.id);
                             }
                         }
                     }
@@ -448,6 +745,11 @@ class MailSlurpApp {
                 
                 // Очистить письма если это текущий ящик
                 if (this.currentInboxId === inboxId) {
+                    // Очистить все таймеры писем этого ящика
+                    for (const email of this.emails) {
+                        this.emailTimestamps.delete(email.id);
+                        this.clearEmailTimer(email.id);
+                    }
                     this.emails = [];
                     this.ui.updateEmailsList(this.emails);
                     this.currentInboxId = null;
@@ -474,6 +776,12 @@ class MailSlurpApp {
                         const emailExists = this.emails.some(email => email.id === newEmail.id);
                         if (!emailExists) {
                             this.emails.unshift(newEmail);
+                            
+                            // Запланировать автоудаление письма через 10 минут
+                            const createdAt = new Date(newEmail.createdAt).getTime();
+                            this.emailTimestamps.set(newEmail.id, createdAt);
+                            this.scheduleEmailDeletion(newEmail.id, createdAt);
+                            
                             this.ui.updateEmailsList(this.emails);
                             this.ui.showToast('Получено новое письмо!', 'info');
                         }
@@ -488,6 +796,11 @@ class MailSlurpApp {
         setInterval(() => {
             this.checkApiConnection();
         }, 5 * 60 * 1000);
+        
+        // Проверка и удаление старых писем каждую минуту
+        setInterval(() => {
+            this.cleanupOldEmails();
+        }, 60 * 1000);
     }
 
     /**
