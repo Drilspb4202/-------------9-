@@ -10,6 +10,9 @@ class MailSlurpApp {
         this.i18n = new I18nManager();
         this.performanceOptimizer = new PerformanceOptimizer();
         
+        // Уникальный идентификатор устройства (для синхронизации между устройствами)
+        this.deviceId = this.getOrCreateDeviceId();
+        
         // Данные приложения
         this.inboxes = [];
         this.emails = [];
@@ -30,6 +33,24 @@ class MailSlurpApp {
         };
         
         this.init();
+    }
+
+    /**
+     * Получить или создать уникальный идентификатор устройства
+     * @returns {string} Уникальный ID устройства
+     */
+    getOrCreateDeviceId() {
+        // Используем sessionStorage для уникального идентификатора каждого устройства/браузера
+        // Это гарантирует, что каждое устройство будет иметь свой отдельный ящик
+        let deviceId = sessionStorage.getItem('neuroMail_deviceId');
+        
+        if (!deviceId) {
+            // Создаем уникальный ID на основе временной метки и случайного числа
+            deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            sessionStorage.setItem('neuroMail_deviceId', deviceId);
+        }
+        
+        return deviceId;
     }
 
     /**
@@ -125,14 +146,21 @@ class MailSlurpApp {
     }
 
     /**
-     * Создать новый почтовый ящик
+     * Создать новый почтовый ящик для текущего устройства
      */
     async createInbox() {
         try {
             this.ui.showModal('create-inbox-modal');
             
-            // Удалить все старые ящики перед созданием нового
-            await this.deleteAllInboxes();
+            // Удалить только ящик текущего устройства перед созданием нового
+            if (this.inboxes.length > 0) {
+                const currentInbox = this.inboxes[0];
+                try {
+                    await this.api.deleteInbox(currentInbox.id);
+                } catch (error) {
+                    console.warn(`Не удалось удалить старый ящик:`, error);
+                }
+            }
             
             // Обновить UI после удаления
             this.ui.updateInboxesList([]);
@@ -141,9 +169,10 @@ class MailSlurpApp {
             // Небольшая задержка для завершения удаления на сервере
             await new Promise(resolve => setTimeout(resolve, 500));
             
+            // Создать новый ящик с идентификатором устройства
             const inbox = await this.api.createInbox({
-                name: `NeuroMail-${Date.now()}`,
-                description: 'Временный почтовый ящик',
+                name: `NeuroMail-${this.deviceId}-${Date.now()}`,
+                description: `Ящик устройства ${this.deviceId}`,
                 expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
             });
             
@@ -178,46 +207,75 @@ class MailSlurpApp {
 
     /**
      * Загрузить список почтовых ящиков
+     * Теперь каждый девайс видит только свой ящик
      */
     async loadInboxes() {
         try {
             this.ui.showLoading('inboxes-section');
             
-            const inboxes = await this.api.getInboxes({ size: 50 });
+            const inboxes = await this.api.getInboxes({ size: 100 });
             const allInboxes = inboxes || [];
             
-            // Если ящиков больше одного, оставить только самый новый
-            if (allInboxes.length > 1) {
-                // Сортировать по дате создания (самый новый первый)
-                allInboxes.sort((a, b) => {
-                    const dateA = new Date(a.createdAt).getTime();
-                    const dateB = new Date(b.createdAt).getTime();
-                    return dateB - dateA; // Новые сначала
-                });
-                
-                // Удалить все ящики, кроме самого нового
-                const newestInbox = allInboxes[0];
-                const inboxesToDelete = allInboxes.slice(1);
-                
-                console.log(`Найдено ${allInboxes.length} ящиков, оставляем только самый новый (${newestInbox.id})`);
-                
-                // Удалить все старые ящики с сервера
-                for (const inbox of inboxesToDelete) {
-                    try {
-                        await this.api.deleteInbox(inbox.id);
-                        console.log(`Старый ящик ${inbox.id} удален`);
-                    } catch (error) {
-                        console.warn(`Не удалось удалить ящик ${inbox.id}:`, error);
-                    }
+            // Найти ящик, принадлежащий этому устройству (по имени или описанию)
+            // Имя ящика содержит deviceId
+            let deviceInbox = null;
+            
+            for (const inbox of allInboxes) {
+                // Проверяем, принадлежит ли ящик этому устройству
+                // Имя ящика может содержать deviceId или описание может содержать deviceId
+                if (inbox.name && inbox.name.includes(this.deviceId)) {
+                    deviceInbox = inbox;
+                    break;
                 }
-                
-                this.inboxes = [newestInbox];
-            } else {
-                this.inboxes = allInboxes;
+                // Также проверяем описание (на случай если имя не содержит deviceId)
+                if (inbox.description && inbox.description.includes(this.deviceId)) {
+                    deviceInbox = inbox;
+                    break;
+                }
             }
             
-            // Удалить старые ящики (старше 10 минут)
-            await this.cleanupOldInboxes();
+            // Если ящик для этого устройства не найден, создать новый
+            if (!deviceInbox) {
+                console.log(`Ящик для устройства ${this.deviceId} не найден, создаем новый`);
+                deviceInbox = await this.api.createInbox({
+                    name: `NeuroMail-${this.deviceId}-${Date.now()}`,
+                    description: `Ящик устройства ${this.deviceId}`,
+                    expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
+                });
+                
+                // Настроить автоудаление если включено
+                if (this.settings.autoDeleteInboxes) {
+                    this.scheduleInboxDeletion(deviceInbox.id);
+                }
+            } else {
+                // Проверить, не истек ли срок действия ящика
+                const createdAt = new Date(deviceInbox.createdAt).getTime();
+                const age = Date.now() - createdAt;
+                
+                if (age > this.settings.inboxLifetime) {
+                    // Ящик истек, создаем новый
+                    console.log(`Ящик устройства ${this.deviceId} истек, создаем новый`);
+                    try {
+                        await this.api.deleteInbox(deviceInbox.id);
+                    } catch (error) {
+                        console.warn(`Не удалось удалить истекший ящик:`, error);
+                    }
+                    
+                    deviceInbox = await this.api.createInbox({
+                        name: `NeuroMail-${this.deviceId}-${Date.now()}`,
+                        description: `Ящик устройства ${this.deviceId}`,
+                        expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
+                    });
+                    
+                    // Настроить автоудаление если включено
+                    if (this.settings.autoDeleteInboxes) {
+                        this.scheduleInboxDeletion(deviceInbox.id);
+                    }
+                }
+            }
+            
+            // Установить только ящик этого устройства
+            this.inboxes = [deviceInbox];
             
             this.ui.updateInboxesList(this.inboxes);
             this.ui.updateInboxSelector(this.inboxes);
@@ -512,21 +570,26 @@ class MailSlurpApp {
     }
 
     /**
-     * Удалить все почтовые ящики
+     * Удалить все почтовые ящики текущего устройства
      */
     async deleteAllInboxes() {
         try {
             // Сначала загрузить все ящики с сервера
             const allInboxes = await this.api.getInboxes({ size: 100 });
-            const inboxesToDelete = allInboxes || [];
             
-            console.log(`Найдено ящиков для удаления: ${inboxesToDelete.length}`);
+            // Фильтруем только ящики текущего устройства
+            const inboxesToDelete = (allInboxes || []).filter(inbox => {
+                return (inbox.name && inbox.name.includes(this.deviceId)) ||
+                       (inbox.description && inbox.description.includes(this.deviceId));
+            });
             
-            // Удалить все ящики с сервера
+            console.log(`Найдено ящиков устройства ${this.deviceId} для удаления: ${inboxesToDelete.length}`);
+            
+            // Удалить только ящики текущего устройства
             const deletePromises = inboxesToDelete.map(async (inbox) => {
                 try {
                     await this.api.deleteInbox(inbox.id);
-                    console.log(`Ящик ${inbox.id} удален с сервера`);
+                    console.log(`Ящик устройства ${this.deviceId} (${inbox.id}) удален с сервера`);
                     return true;
                 } catch (error) {
                     console.warn(`Не удалось удалить ящик ${inbox.id}:`, error);
@@ -534,7 +597,7 @@ class MailSlurpApp {
                 }
             });
             
-            // Дождаться удаления всех ящиков
+            // Дождаться удаления всех ящиков устройства
             await Promise.all(deletePromises);
             
             // Очистить локальные данные
@@ -548,9 +611,9 @@ class MailSlurpApp {
             this.ui.updateInboxesList([]);
             this.ui.updateInboxSelector([]);
             
-            console.log(`Все старые ящики удалены (${inboxesToDelete.length} шт.)`);
+            console.log(`Все ящики устройства ${this.deviceId} удалены (${inboxesToDelete.length} шт.)`);
         } catch (error) {
-            console.error('Ошибка удаления всех ящиков:', error);
+            console.error('Ошибка удаления ящиков устройства:', error);
             // Все равно очистить локальные данные
             this.inboxes = [];
             this.emails = [];
@@ -564,14 +627,23 @@ class MailSlurpApp {
     }
 
     /**
-     * Удалить старые ящики (старше 10 минут)
+     * Удалить старые ящики (старше 10 минут) только для текущего устройства
      */
     async cleanupOldInboxes() {
         try {
             const now = Date.now();
             const inboxesToDelete = [];
             
+            // Проверяем только ящики текущего устройства
             for (const inbox of this.inboxes) {
+                // Проверяем, что это ящик текущего устройства
+                const isDeviceInbox = (inbox.name && inbox.name.includes(this.deviceId)) ||
+                                     (inbox.description && inbox.description.includes(this.deviceId));
+                
+                if (!isDeviceInbox) {
+                    continue; // Пропускаем ящики других устройств
+                }
+                
                 const createdAt = new Date(inbox.createdAt).getTime();
                 const age = now - createdAt;
                 
@@ -593,7 +665,7 @@ class MailSlurpApp {
                         this.currentInboxId = null;
                     }
                     
-                    console.log(`Старый ящик ${inbox.id} удален (возраст: ${Math.round(age / 1000 / 60)} минут)`);
+                    console.log(`Старый ящик устройства ${this.deviceId} удален (возраст: ${Math.round(age / 1000 / 60)} минут)`);
                 } catch (error) {
                     console.warn(`Не удалось удалить старый ящик ${inbox.id}:`, error);
                 }
