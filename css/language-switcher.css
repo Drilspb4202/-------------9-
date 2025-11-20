@@ -1,0 +1,316 @@
+/* Стили для переключателя языков */
+
+.language-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(26, 22, 51, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.25rem;
+    backdrop-filter: blur(5px);
+}
+
+.lang-btn {
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.lang-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.3s ease;
+}
+
+.lang-btn:hover::before {
+    left: 100%;
+}
+
+.lang-btn:hover {
+    color: var(--text-color);
+    background: rgba(138, 43, 226, 0.1);
+}
+
+.lang-btn.active {
+    background: var(--gradient-primary);
+    color: var(--text-color);
+    box-shadow: var(--shadow);
+}
+
+.lang-btn.active::before {
+    display: none;
+}
+
+/* Анимация переключения */
+.lang-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.lang-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.lang-btn:active::after {
+    width: 100px;
+    height: 100px;
+}
+
+/* Мобильные стили */
+@media (max-width: 768px) {
+    .language-switcher {
+        gap: 0.25rem;
+        padding: 0.2rem;
+    }
+
+    .lang-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Планшеты */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .language-switcher {
+        gap: 0.4rem;
+    }
+
+    .lang-btn {
+        padding: 0.45rem 0.7rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Анимация появления */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.language-switcher {
+    animation: slideInFromRight 0.3s ease;
+}
+
+/* Эффект свечения для активной кнопки */
+.lang-btn.active {
+    position: relative;
+}
+
+.lang-btn.active::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--gradient-primary);
+    border-radius: var(--radius);
+    z-index: -1;
+    opacity: 0.3;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+/* Темная тема */
+@media (prefers-color-scheme: dark) {
+    .language-switcher {
+        background: rgba(15, 11, 33, 0.9);
+        border-color: var(--border-color);
+    }
+}
+
+/* Высокий контраст */
+@media (prefers-contrast: high) {
+    .language-switcher {
+        border: 2px solid var(--text-color);
+    }
+
+    .lang-btn {
+        border: 1px solid transparent;
+    }
+
+    .lang-btn:hover {
+        border-color: var(--text-color);
+    }
+
+    .lang-btn.active {
+        border-color: var(--text-color);
+        background: var(--text-color);
+        color: var(--bg-color);
+    }
+}
+
+/* Уменьшенная анимация */
+@media (prefers-reduced-motion: reduce) {
+    .lang-btn {
+        transition: none;
+    }
+
+    .lang-btn::before,
+    .lang-btn::after {
+        display: none;
+    }
+
+    .language-switcher {
+        animation: none;
+    }
+
+    .lang-btn.active::before {
+        animation: none;
+    }
+}
+
+/* Фокус для доступности */
+.lang-btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.lang-btn:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Состояние загрузки */
+.language-switcher.loading .lang-btn {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.language-switcher.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--primary-color);
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Индикатор текущего языка */
+.language-switcher::before {
+    content: attr(data-current-lang);
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.language-switcher:hover::before {
+    opacity: 1;
+}
+
+/* Анимация смены языка */
+.lang-btn.changing {
+    animation: languageChange 0.5s ease;
+}
+
+@keyframes languageChange {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Стили для RTL языков */
+[dir="rtl"] .language-switcher {
+    direction: rtl;
+}
+
+[dir="rtl"] .lang-btn {
+    text-align: right;
+}
+
+/* Специальные стили для разных языков */
+.lang-btn[data-lang="ru"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.lang-btn[data-lang="en"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Эффект при наведении на весь переключатель */
+.language-switcher:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(138, 43, 226, 0.3);
+}
+
+/* Адаптация для touch устройств */
+@media (hover: none) and (pointer: coarse) {
+    .lang-btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lang-btn:hover {
+        background: transparent;
+    }
+
+    .lang-btn:active {
+        background: var(--gradient-primary);
+        transform: scale(0.95);
+    }
+}
