@@ -402,11 +402,14 @@ class DataGenerator {
                 email,
                 login,
                 password,
-                phone: phoneNumber,
+                phoneNumber: phoneNumber,
                 birthDate,
-                company: companyData.company,
-                jobTitle: companyData.jobTitle,
-                website: companyData.website,
+                company: {
+                    company: companyData.company,
+                    jobTitle: companyData.jobTitle,
+                    website: companyData.website,
+                    email: companyData.email
+                },
                 address: {
                     country,
                     state,

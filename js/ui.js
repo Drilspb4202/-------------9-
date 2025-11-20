@@ -427,15 +427,21 @@ class MailSlurpUI {
         
         if (email.attachments && email.attachments.length > 0) {
             attachmentsContainer.style.display = 'block';
-            attachmentsList.innerHTML = email.attachments.map(attachment => `
+            attachmentsList.innerHTML = email.attachments.map(attachment => {
+                const filename = attachment.filename || 'Вложение';
+                const attachmentId = attachment.id;
+                // Экранируем кавычки в имени файла для безопасного использования в onclick
+                const safeFilename = filename.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `
                 <div class="attachment-item">
                     <i class="fas fa-paperclip"></i>
-                    <span>${attachment.filename || 'Вложение'}</span>
-                    <button class="btn btn-small btn-secondary" onclick="window.mailSlurpApp.downloadAttachment('${attachment.id}')">
+                    <span>${this.escapeHtml(filename)}</span>
+                    <button class="btn btn-small btn-secondary" onclick="window.mailSlurpApp.downloadAttachment('${attachmentId}', '${safeFilename}')" title="Скачать вложение">
                         <i class="fas fa-download"></i>
                     </button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         } else {
             attachmentsContainer.style.display = 'none';
         }

@@ -1,0 +1,1385 @@
+/* Современный улучшенный UI для NeuroMail */
+
+/* Улучшенные CSS переменные */
+:root {
+    --primary-color: #8a2be2;
+    --primary-hover: #9d3ff5;
+    --secondary-color: #b15eff;
+    --accent-color: #ff00ff;
+    --bg-color: #0a0718;
+    --card-bg: rgba(26, 22, 51, 0.85);
+    --card-bg-hover: rgba(26, 22, 51, 0.95);
+    --text-color: #ffffff;
+    --text-secondary: #b8a9d9;
+    --border-color: rgba(138, 43, 226, 0.3);
+    --border-hover: rgba(138, 43, 226, 0.6);
+    --success-color: #00ffbb;
+    --error-color: #ff3366;
+    --warning-color: #ffbf00;
+    --info-color: #00aaff;
+    
+    /* Градиенты */
+    --gradient-primary: linear-gradient(135deg, #8a2be2 0%, #b15eff 50%, #ff00ff 100%);
+    --gradient-accent: linear-gradient(135deg, #b15eff 0%, #ff00ff 100%);
+    --gradient-card: linear-gradient(135deg, rgba(138, 43, 226, 0.1) 0%, rgba(177, 94, 255, 0.1) 100%);
+    
+    /* Тени */
+    --shadow-sm: 0 2px 8px rgba(138, 43, 226, 0.15);
+    --shadow-md: 0 4px 16px rgba(138, 43, 226, 0.25);
+    --shadow-lg: 0 8px 32px rgba(138, 43, 226, 0.35);
+    --shadow-xl: 0 16px 48px rgba(138, 43, 226, 0.45);
+    --glow: 0 0 20px rgba(138, 43, 226, 0.4), 0 0 40px rgba(138, 43, 226, 0.2);
+    
+    /* Переходы */
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius: 16px;
+    --radius-sm: 12px;
+    --radius-lg: 24px;
+}
+
+/* Glassmorphism эффект */
+.glass {
+    background: rgba(26, 22, 51, 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+/* Улучшенный заголовок */
+.header {
+    background: rgba(26, 22, 51, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    padding: 1.25rem 0;
+}
+
+.logo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo i {
+    font-size: 2.25rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.5));
+    animation: logoGlow 3s ease-in-out infinite;
+}
+
+@keyframes logoGlow {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.5)); }
+    50% { filter: drop-shadow(0 0 20px rgba(138, 43, 226, 0.8)); }
+}
+
+/* Улучшенная навигация */
+.navigation {
+    gap: 0.75rem;
+}
+
+.nav-item {
+    padding: 1rem 1.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-secondary);
+    position: relative;
+    overflow: hidden;
+    font-weight: 500;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: var(--gradient-primary);
+    opacity: 0.1;
+    transition: left 0.3s ease;
+}
+
+.nav-item:hover::before {
+    left: 0;
+}
+
+.nav-item:hover {
+    background: var(--card-bg-hover);
+    border-color: var(--border-hover);
+    color: var(--text-color);
+    transform: translateX(8px);
+    box-shadow: var(--shadow-md);
+}
+
+.nav-item.active {
+    background: var(--gradient-primary);
+    border-color: transparent;
+    color: var(--text-color);
+    box-shadow: var(--glow);
+    transform: translateX(0);
+}
+
+.nav-item.active::before {
+    display: none;
+}
+
+.nav-item i {
+    font-size: 1.3rem;
+    width: 24px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.nav-item:hover i,
+.nav-item.active i {
+    transform: scale(1.1);
+}
+
+/* Улучшенный контент */
+.content {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-primary);
+    opacity: 0.6;
+}
+
+.section-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+    position: relative;
+}
+
+.section-header::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: var(--gradient-primary);
+}
+
+.section-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+/* Современные кнопки */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.875rem 1.75rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::after {
+    left: 100%;
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: var(--text-color);
+    box-shadow: var(--shadow-md), var(--glow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg), var(--glow);
+}
+
+.btn-primary:active {
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: rgba(138, 43, 226, 0.15);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+    background: rgba(138, 43, 226, 0.25);
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--error-color), #ff6b8a);
+    color: var(--text-color);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-danger:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.btn i {
+    font-size: 1rem;
+    transition: var(--transition);
+}
+
+.btn:hover i {
+    transform: scale(1.1);
+}
+
+/* Улучшенные формы */
+.input, .select, .textarea {
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    background: rgba(26, 22, 51, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: rgba(26, 22, 51, 0.8);
+    box-shadow: 0 0 0 4px rgba(138, 43, 226, 0.15), var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b15eff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+}
+
+/* Улучшенные карточки ящиков */
+.inboxes-list, .emails-list {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.inbox-item, .email-item {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1.75rem;
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.inbox-item::before,
+.email-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.inbox-item:hover,
+.email-item:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    background: var(--card-bg-hover);
+}
+
+.inbox-item:hover::before,
+.email-item:hover::before {
+    opacity: 1;
+}
+
+.inbox-header, .email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+    gap: 1rem;
+}
+
+.inbox-email, .email-subject {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1.15rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.inbox-meta, .email-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.inbox-actions, .email-actions {
+    display: flex;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+}
+
+/* Улучшенные модальные окна */
+.modal {
+    backdrop-filter: blur(10px);
+    background: rgba(10, 7, 24, 0.85);
+}
+
+.modal-content {
+    background: var(--card-bg);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl), var(--glow);
+    animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-content.email-viewer {
+    max-width: 900px;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 1.75rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(138, 43, 226, 0.05);
+}
+
+.modal-header h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.modal-close {
+    background: rgba(138, 43, 226, 0.1);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.modal-close:hover {
+    background: rgba(255, 51, 102, 0.2);
+    border-color: var(--error-color);
+    color: var(--error-color);
+    transform: rotate(90deg) scale(1.1);
+}
+
+.modal-body {
+    padding: 1.75rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Улучшенные уведомления */
+.toast {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid;
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow-lg);
+    animation: toastSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.toast-success {
+    border-left-color: var(--success-color);
+    background: rgba(0, 255, 187, 0.1);
+}
+
+.toast-error {
+    border-left-color: var(--error-color);
+    background: rgba(255, 51, 102, 0.1);
+}
+
+.toast-warning {
+    border-left-color: var(--warning-color);
+    background: rgba(255, 191, 0, 0.1);
+}
+
+.toast-info {
+    border-left-color: var(--info-color);
+    background: rgba(0, 170, 255, 0.1);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.toast-content i {
+    font-size: 1.5rem;
+}
+
+/* Улучшенный загрузчик */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.loading i {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Улучшенные настройки */
+.settings-group {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 2rem;
+    transition: var(--transition);
+}
+
+.settings-group:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.settings-group h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.setting-item {
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.setting-item:hover {
+    background: rgba(138, 43, 226, 0.05);
+}
+
+.setting-item label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.setting-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
+
+/* Premium карточка */
+.premium-card {
+    background: var(--gradient-primary);
+    border-radius: var(--radius-lg);
+    padding: 3.5rem;
+    text-align: center;
+    max-width: 550px;
+    box-shadow: var(--shadow-xl), var(--glow);
+    position: relative;
+    overflow: hidden;
+}
+
+.premium-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: premiumShine 3s ease-in-out infinite;
+}
+
+@keyframes premiumShine {
+    0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+    50% { transform: translate(-50%, -50%) rotate(180deg); }
+}
+
+.premium-icon {
+    font-size: 4.5rem;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.5));
+    animation: premiumPulse 2s ease-in-out infinite;
+}
+
+@keyframes premiumPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.premium-card h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    color: var(--text-color);
+}
+
+.premium-features {
+    list-style: none;
+    margin-bottom: 2.5rem;
+    text-align: left;
+}
+
+.premium-features li {
+    padding: 0.75rem 0;
+    color: var(--text-color);
+    position: relative;
+    padding-left: 2rem;
+    font-size: 1.05rem;
+    transition: var(--transition);
+}
+
+.premium-features li:hover {
+    transform: translateX(5px);
+}
+
+.premium-features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--success-color);
+    font-weight: bold;
+    font-size: 1.25rem;
+}
+
+.btn-premium {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: var(--text-color);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    font-size: 1.1rem;
+    padding: 1rem 2.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn-premium:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Улучшенные элементы управления */
+.email-controls, .generator-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Улучшенные скроллбары */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(26, 22, 51, 0.5);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gradient-primary);
+    border-radius: 5px;
+    border: 2px solid rgba(26, 22, 51, 0.5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gradient-accent);
+}
+
+/* Улучшенная мобильная навигация */
+.mobile-fixed-nav {
+    background: rgba(26, 22, 51, 0.95);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-nav-item {
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.mobile-nav-item.active::before {
+    opacity: 1;
+}
+
+.mobile-nav-item.active {
+    color: var(--primary-color);
+}
+
+.mobile-nav-item i {
+    transition: var(--transition);
+}
+
+.mobile-nav-item.active i {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 8px rgba(138, 43, 226, 0.6));
+}
+
+/* Улучшенный статус подключения */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 255, 187, 0.1);
+    border: 1px solid rgba(0, 255, 187, 0.3);
+    border-radius: var(--radius-sm);
+    color: var(--success-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.connection-status.disconnected {
+    background: rgba(255, 51, 102, 0.1);
+    border-color: rgba(255, 51, 102, 0.3);
+    color: var(--error-color);
+}
+
+.connection-status i {
+    font-size: 1rem;
+    animation: connectionPulse 2s ease-in-out infinite;
+}
+
+@keyframes connectionPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.connection-status.disconnected i {
+    animation: none;
+}
+
+/* Улучшенные элементы управления email */
+.email-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.email-controls .select {
+    flex: 1;
+    min-width: 200px;
+}
+
+.email-controls .btn {
+    flex-shrink: 0;
+}
+
+/* Улучшенный генератор */
+.generator-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.location-selectors {
+    display: flex;
+    gap: 1rem;
+    flex: 1;
+    min-width: 300px;
+}
+
+.location-selectors .select {
+    flex: 1;
+    min-width: 150px;
+}
+
+.generated-data {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-top: 1.5rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.data-section {
+    background: rgba(138, 43, 226, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.data-section:hover {
+    background: rgba(138, 43, 226, 0.1);
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.data-section h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.data-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+}
+
+.data-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.data-item:hover {
+    background: rgba(138, 43, 226, 0.1);
+    transform: translateX(5px);
+}
+
+.data-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 140px;
+    flex-shrink: 0;
+}
+
+.data-value {
+    flex: 1;
+    color: var(--text-color);
+    margin: 0 1rem;
+    word-break: break-word;
+    font-family: 'Courier New', monospace;
+}
+
+.copy-btn {
+    background: rgba(138, 43, 226, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.copy-btn:hover {
+    background: var(--gradient-primary);
+    border-color: transparent;
+    transform: scale(1.05);
+    box-shadow: var(--shadow-md);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .content {
+        padding: 1.5rem;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 1.25rem;
+        align-items: stretch;
+    }
+    
+    .section-header::after {
+        width: 100%;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+        max-height: 90vh;
+    }
+    
+    .inbox-header, .email-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .inbox-actions, .email-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .premium-card {
+        padding: 2rem;
+    }
+    
+    .location-selectors {
+        flex-direction: column;
+        min-width: 100%;
+    }
+    
+    .location-selectors .select {
+        width: 100%;
+    }
+    
+    .data-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .data-label {
+        min-width: auto;
+    }
+    
+    .data-value {
+        margin: 0;
+    }
+    
+    .email-controls {
+        flex-direction: column;
+    }
+    
+    .email-controls .select {
+        width: 100%;
+    }
+}
+
+/* Дополнительные улучшения */
+.clickable-email {
+    background: var(--gradient-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.875rem 1.25rem;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.clickable-email:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: rgba(138, 43, 226, 0.2);
+}
+
+/* Анимация появления элементов */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.inbox-item,
+.email-item {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Улучшенные пустые состояния */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.5rem;
+    opacity: 0.6;
+    display: block;
+    animation: emptyStatePulse 2s ease-in-out infinite;
+}
+
+@keyframes emptyStatePulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text-color);
+}
+
+.empty-state p {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* Улучшенный просмотрщик писем */
+.email-viewer .email-header {
+    background: var(--card-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.email-field {
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.email-field:hover {
+    background: rgba(138, 43, 226, 0.05);
+}
+
+.email-field strong {
+    min-width: 80px;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.email-field span {
+    color: var(--text-color);
+    word-break: break-word;
+    flex: 1;
+}
+
+.email-content {
+    background: rgba(26, 22, 51, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    min-height: 200px;
+}
+
+.email-content iframe {
+    width: 100%;
+    height: 500px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: white;
+}
+
+.email-attachments {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.email-attachments h4 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(138, 43, 226, 0.1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    transition: var(--transition);
+}
+
+.attachment-item:hover {
+    background: rgba(138, 43, 226, 0.2);
+    border-color: var(--border-hover);
+    transform: translateX(5px);
+    box-shadow: var(--shadow-md);
+}
+
+.attachment-item i {
+    color: var(--accent-color);
+    font-size: 1.5rem;
+}
+
+.attachment-item span {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-color);
+    word-break: break-word;
+}
+
+/* Улучшенные формы */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Улучшенные чекбоксы */
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+    border-radius: 4px;
+}
+
+input[type="checkbox"]:checked {
+    background: var(--gradient-primary);
+    border-color: var(--primary-color);
+}
+
+/* Улучшенные текстовые области */
+.textarea {
+    resize: vertical;
+    min-height: 150px;
+    font-family: inherit;
+    line-height: 1.6;
+}
+
+/* Индикатор вложений в списке писем */
+.attachment-indicator {
+    color: var(--accent-color);
+    margin-left: 0.5rem;
+    font-size: 0.9rem;
+    animation: attachmentPulse 2s ease-in-out infinite;
+}
+
+@keyframes attachmentPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* Улучшенные метаданные писем */
+.email-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.email-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: rgba(138, 43, 226, 0.05);
+    border-radius: var(--radius-sm);
+}
+
+.email-meta strong {
+    color: var(--primary-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Улучшенные индикаторы статуса */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-indicator.success {
+    background: rgba(0, 255, 187, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(0, 255, 187, 0.3);
+}
+
+.status-indicator.error {
+    background: rgba(255, 51, 102, 0.1);
+    color: var(--error-color);
+    border: 1px solid rgba(255, 51, 102, 0.3);
+}
+
+.status-indicator.warning {
+    background: rgba(255, 191, 0, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 191, 0, 0.3);
+}
+
+/* Плавное появление элементов */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.content-section {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Улучшенные разделители */
+.divider {
+    height: 1px;
+    background: var(--gradient-primary);
+    margin: 2rem 0;
+    opacity: 0.3;
+}
+
+/* Улучшенные подсказки */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 0.75rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 0.5rem;
+}
+
+/* Улучшенные счетчики */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 0.5rem;
+    background: var(--gradient-primary);
+    color: var(--text-color);
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+}
+

@@ -267,67 +267,6 @@ class MailSlurpApi {
         }
     }
 
-    /**
-     * Получить вложение по ID
-     * @param {string} attachmentId - ID вложения
-     * @returns {Promise<Blob>} Вложение как Blob
-     */
-    async getAttachment(attachmentId) {
-        try {
-            const apiKey = this.getCurrentApiKey();
-            if (!apiKey) {
-                throw new Error('Нет доступных API ключей');
-            }
-
-            const url = `${this.baseUrl}/attachments/${attachmentId}`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'x-api-key': apiKey
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.blob();
-        } catch (error) {
-            console.error('Ошибка получения вложения:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Скачать вложение
-     * @param {string} attachmentId - ID вложения
-     * @param {string} filename - Имя файла
-     * @returns {Promise<void>}
-     */
-    async downloadAttachment(attachmentId, filename = 'attachment') {
-        try {
-            const blob = await this.getAttachment(attachmentId);
-            
-            // Создаем ссылку для скачивания
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            
-            // Добавляем ссылку в DOM, кликаем и удаляем
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Освобождаем память
-            window.URL.revokeObjectURL(url);
-            
-            return true;
-        } catch (error) {
-            console.error('Ошибка скачивания вложения:', error);
-            throw error;
-        }
-    }
 
     /**
      * Отправить письмо
@@ -461,21 +400,81 @@ class MailSlurpApi {
     }
 
     /**
-     * Получить вложения письма
+     * Получить вложение по ID
      * @param {string} attachmentId - ID вложения
-     * @returns {Promise<Object>} Данные вложения
+     * @param {string} filename - Имя файла (опционально)
+     * @returns {Promise<Object>} Данные вложения с downloadUrl и filename
      */
-    async getAttachment(attachmentId) {
-        try {
-            const response = await this.makeRequest(`/attachments/${attachmentId}`, {
-                method: 'GET'
-            });
+    async getAttachment(attachmentId, filename = null) {
+        const requestFn = async () => {
+            const apiKey = this.getCurrentApiKey();
+            if (!apiKey) {
+                throw new Error('Нет доступных API ключей');
+            }
 
-            return response;
-        } catch (error) {
-            console.error('Ошибка получения вложения:', error);
-            throw error;
-        }
+            const url = `${this.baseUrl}/attachments/${attachmentId}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.timeout * 2); // Увеличиваем таймаут для больших файлов
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': apiKey
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
+                }
+
+                // Получаем вложение как Blob, чтобы гарантированно скачать даже подозрительные файлы
+                const blob = await response.blob();
+                
+                // Получаем имя файла из заголовков или используем переданное
+                let attachmentFilename = filename;
+                if (!attachmentFilename) {
+                    const contentDisposition = response.headers.get('content-disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            attachmentFilename = filenameMatch[1].replace(/['"]/g, '');
+                            // Декодируем URL-encoded имя файла
+                            try {
+                                attachmentFilename = decodeURIComponent(attachmentFilename);
+                            } catch (e) {
+                                // Если не удалось декодировать, используем как есть
+                            }
+                        }
+                    }
+                }
+                
+                if (!attachmentFilename) {
+                    attachmentFilename = `attachment-${attachmentId}`;
+                }
+
+                const downloadUrl = URL.createObjectURL(blob);
+                
+                this.keyPool.markCurrentKeyUsed(false);
+                
+                return {
+                    downloadUrl: downloadUrl,
+                    filename: attachmentFilename,
+                    blob: blob,
+                    size: blob.size,
+                    type: blob.type
+                };
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        };
+
+        return this.withRetry(requestFn);
     }
 
     /**

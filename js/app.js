@@ -23,6 +23,9 @@ class MailSlurpApp {
         this.emailTimestamps = new Map(); // emailId -> createdAt timestamp
         this.emailDeletionTimers = new Map(); // emailId -> timer ID
         
+        // Отслеживание загруженных писем для предотвращения дубликатов
+        this.loadedEmailIds = new Set(); // Set всех загруженных ID писем
+        
         // Настройки
         this.settings = {
             autoDeleteInboxes: true,
@@ -82,7 +85,7 @@ class MailSlurpApp {
             this.setupAutoTasks();
             
             // Обновить UI
-            this.ui.updatePageLanguage();
+            this.i18n.updatePageLanguage();
             
             this.isInitialized = true;
             console.log('✅ NeuroMail инициализирован успешно');
@@ -150,15 +153,27 @@ class MailSlurpApp {
      */
     async createInbox() {
         try {
-            this.ui.showModal('create-inbox-modal');
+            // Показать индикатор загрузки
+            this.ui.showToast('Создание почтового ящика...', 'info');
             
-            // Удалить только ящик текущего устройства перед созданием нового
+            // Удалить все существующие ящики текущего устройства перед созданием нового
             if (this.inboxes.length > 0) {
-                const currentInbox = this.inboxes[0];
-                try {
-                    await this.api.deleteInbox(currentInbox.id);
+                for (const inbox of this.inboxes) {
+                    try {
+                        // Удалить все письма этого ящика
+                        const emailsToRemove = this.emails.filter(email => email.inboxId === inbox.id);
+                        for (const email of emailsToRemove) {
+                            this.emailTimestamps.delete(email.id);
+                            this.loadedEmailIds.delete(email.id);
+                            this.clearEmailTimer(email.id);
+                        }
+                        this.emails = this.emails.filter(email => email.inboxId !== inbox.id);
+                        
+                        // Удалить ящик на сервере
+                        await this.api.deleteInbox(inbox.id);
                 } catch (error) {
-                    console.warn(`Не удалось удалить старый ящик:`, error);
+                        console.warn(`Не удалось удалить старый ящик ${inbox.id}:`, error);
+                    }
                 }
             }
             
@@ -184,11 +199,11 @@ class MailSlurpApp {
             // Очистить письма при создании нового ящика
             this.emails = [];
             this.emailTimestamps.clear();
+            this.loadedEmailIds.clear();
             this.clearAllEmailTimers();
             this.ui.updateEmailsList(this.emails);
             this.currentInboxId = null;
             
-            this.ui.hideModal('create-inbox-modal');
             this.ui.showToast(this.i18n.t('inbox_created_success'), 'success');
             
             // Настроить автоудаление если включено
@@ -199,7 +214,6 @@ class MailSlurpApp {
             return inbox;
         } catch (error) {
             console.error('Ошибка создания ящика:', error);
-            this.ui.hideModal('create-inbox-modal');
             this.ui.showToast(this.i18n.t('error_creating_inbox'), 'error');
             throw error;
         }
@@ -234,43 +248,35 @@ class MailSlurpApp {
                 }
             }
             
-            // Если ящик для этого устройства не найден, создать новый
+            // Если ящик для этого устройства не найден, просто показываем пустой список
+            // Ящик будет создан только по кнопке "Создать новый"
             if (!deviceInbox) {
-                console.log(`Ящик для устройства ${this.deviceId} не найден, создаем новый`);
-                deviceInbox = await this.api.createInbox({
-                    name: `NeuroMail-${this.deviceId}-${Date.now()}`,
-                    description: `Ящик устройства ${this.deviceId}`,
-                    expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
-                });
-                
-                // Настроить автоудаление если включено
-                if (this.settings.autoDeleteInboxes) {
-                    this.scheduleInboxDeletion(deviceInbox.id);
-                }
+                console.log(`Ящик для устройства ${this.deviceId} не найден`);
+                this.inboxes = [];
+                this.ui.updateInboxesList(this.inboxes);
+                this.ui.updateInboxSelector(this.inboxes);
+                this.ui.hideLoading('inboxes-section');
+                return [];
             } else {
                 // Проверить, не истек ли срок действия ящика
                 const createdAt = new Date(deviceInbox.createdAt).getTime();
                 const age = Date.now() - createdAt;
                 
                 if (age > this.settings.inboxLifetime) {
-                    // Ящик истек, создаем новый
-                    console.log(`Ящик устройства ${this.deviceId} истек, создаем новый`);
+                    // Ящик истек, удаляем его и показываем пустой список
+                    // Новый ящик будет создан только по кнопке "Создать новый"
+                    console.log(`Ящик устройства ${this.deviceId} истек, удаляем`);
                     try {
                         await this.api.deleteInbox(deviceInbox.id);
                     } catch (error) {
                         console.warn(`Не удалось удалить истекший ящик:`, error);
                     }
                     
-                    deviceInbox = await this.api.createInbox({
-                        name: `NeuroMail-${this.deviceId}-${Date.now()}`,
-                        description: `Ящик устройства ${this.deviceId}`,
-                        expiresAt: new Date(Date.now() + this.settings.inboxLifetime).toISOString()
-                    });
-                    
-                    // Настроить автоудаление если включено
-                    if (this.settings.autoDeleteInboxes) {
-                        this.scheduleInboxDeletion(deviceInbox.id);
-                    }
+                    this.inboxes = [];
+                    this.ui.updateInboxesList(this.inboxes);
+                    this.ui.updateInboxSelector(this.inboxes);
+                    this.ui.hideLoading('inboxes-section');
+                    return [];
                 }
             }
             
@@ -301,22 +307,33 @@ class MailSlurpApp {
                 return;
             }
             
+            // Удалить ящик на сервере
             await this.api.deleteInbox(inboxId);
             
+            // Удалить все письма этого ящика из локального хранилища
+            const emailsToRemove = this.emails.filter(email => email.inboxId === inboxId);
+            for (const email of emailsToRemove) {
+                // Очистить таймеры и метаданные писем
+                this.emailTimestamps.delete(email.id);
+                this.clearEmailTimer(email.id);
+                this.loadedEmailIds.delete(email.id);
+            }
+            
+            // Удалить письма этого ящика из массива
+            this.emails = this.emails.filter(email => email.inboxId !== inboxId);
+            
+            // Удалить ящик из списка
             this.inboxes = this.inboxes.filter(inbox => inbox.id !== inboxId);
             this.ui.updateInboxesList(this.inboxes);
             this.ui.updateInboxSelector(this.inboxes);
             
-            // Очистить письма если это текущий ящик
+            // Если это был текущий ящик, очистить текущий выбор
             if (this.currentInboxId === inboxId) {
-                // Очистить все таймеры писем этого ящика
-                for (const email of this.emails) {
-                    this.emailTimestamps.delete(email.id);
-                    this.clearEmailTimer(email.id);
-                }
-                this.emails = [];
-                this.ui.updateEmailsList(this.emails);
                 this.currentInboxId = null;
+                this.ui.updateEmailsList([]);
+            } else {
+                // Обновить список писем, если он отображается
+                this.ui.updateEmailsList(this.emails);
             }
             
             this.ui.showToast(this.i18n.t('inbox_deleted_success'), 'success');
@@ -347,14 +364,21 @@ class MailSlurpApp {
             
             const emails = await this.api.getEmails(inboxId, { size: 50 });
             
-            // Убрать дубликаты по ID писем
+            // Убрать дубликаты по ID писем - используем Set для надежной проверки
             const uniqueEmails = [];
             const emailIds = new Set();
             
             if (emails && emails.length > 0) {
                 for (const email of emails) {
-                    if (!emailIds.has(email.id)) {
+                    // Убедиться, что у письма есть inboxId
+                    if (!email.inboxId) {
+                        email.inboxId = inboxId;
+                    }
+                    
+                    // Проверяем дубликаты по ID
+                    if (!emailIds.has(email.id) && !this.loadedEmailIds.has(email.id)) {
                         emailIds.add(email.id);
+                        this.loadedEmailIds.add(email.id);
                         uniqueEmails.push(email);
                         
                         // Если это новое письмо, запланировать его удаление
@@ -370,31 +394,36 @@ class MailSlurpApp {
             // Удалить старые письма (старше 10 минут)
             await this.cleanupOldEmails();
             
-            // Обновить список писем, оставив только те, которые есть в API и не удалены
-            const updatedEmails = [];
+            // Обновить список писем для текущего ящика
+            // Сначала удалить все письма этого ящика, которые больше не существуют в API
+            const currentInboxEmailIds = new Set(uniqueEmails.map(e => e.id));
+            this.emails = this.emails.filter(email => {
+                // Оставить письма других ящиков
+                if (email.inboxId !== inboxId) {
+                    return true;
+                }
+                // Для текущего ящика оставить только те, что есть в API
+                return currentInboxEmailIds.has(email.id);
+            });
             
-            // Добавить все письма из API (они уже без дубликатов)
+            // Добавить новые письма из API
             for (const email of uniqueEmails) {
-                updatedEmails.push(email);
-            }
-            
-            // Добавить существующие письма, которых нет в API, но они еще не старые
-            for (const email of this.emails) {
-                if (!emailIds.has(email.id)) {
-                    // Проверить, не старое ли это письмо
-                    const createdAt = this.emailTimestamps.get(email.id) || new Date(email.createdAt).getTime();
-                    const age = Date.now() - createdAt;
-                    if (age < this.settings.emailLifetime) {
-                        updatedEmails.push(email);
+                // Проверить, нет ли уже такого письма в массиве
+                const existingIndex = this.emails.findIndex(e => e.id === email.id);
+                if (existingIndex === -1) {
+                    this.emails.push(email);
                     } else {
-                        // Удалить старое письмо из локального хранилища
-                        this.emailTimestamps.delete(email.id);
-                        this.clearEmailTimer(email.id);
+                    // Обновить существующее письмо
+                    this.emails[existingIndex] = email;
                     }
                 }
-            }
             
-            this.emails = updatedEmails;
+            // Отсортировать письма по дате создания (новые первыми)
+            this.emails.sort((a, b) => {
+                const dateA = new Date(a.createdAt || a.receivedAt || 0).getTime();
+                const dateB = new Date(b.createdAt || b.receivedAt || 0).getTime();
+                return dateB - dateA;
+            });
             
             this.ui.updateEmailsList(this.emails);
             this.ui.hideLoading('emails-section');
@@ -604,6 +633,7 @@ class MailSlurpApp {
             this.inboxes = [];
             this.emails = [];
             this.emailTimestamps.clear();
+            this.loadedEmailIds.clear();
             this.clearAllEmailTimers();
             this.currentInboxId = null;
             
@@ -618,6 +648,7 @@ class MailSlurpApp {
             this.inboxes = [];
             this.emails = [];
             this.emailTimestamps.clear();
+            this.loadedEmailIds.clear();
             this.clearAllEmailTimers();
             this.currentInboxId = null;
             // Обновить UI
@@ -657,12 +688,19 @@ class MailSlurpApp {
                     await this.api.deleteInbox(inbox.id);
                     this.inboxes = this.inboxes.filter(i => i.id !== inbox.id);
                     
-                    // Очистить письма если это текущий ящик
+                    // Удалить все письма этого ящика
+                    const emailsToRemove = this.emails.filter(email => email.inboxId === inbox.id);
+                    for (const email of emailsToRemove) {
+                        this.emailTimestamps.delete(email.id);
+                        this.loadedEmailIds.delete(email.id);
+                        this.clearEmailTimer(email.id);
+                    }
+                    this.emails = this.emails.filter(email => email.inboxId !== inbox.id);
+                    
+                    // Очистить текущий выбор если это был текущий ящик
                     if (this.currentInboxId === inbox.id) {
-                        this.emails = [];
-                        this.emailTimestamps.clear();
-                        this.clearAllEmailTimers();
                         this.currentInboxId = null;
+                        this.ui.updateEmailsList(this.emails);
                     }
                     
                     console.log(`Старый ящик устройства ${this.deviceId} удален (возраст: ${Math.round(age / 1000 / 60)} минут)`);
@@ -702,6 +740,7 @@ class MailSlurpApp {
                     await this.api.deleteEmail(email.id);
                     this.emails = this.emails.filter(e => e.id !== email.id);
                     this.emailTimestamps.delete(email.id);
+                    this.loadedEmailIds.delete(email.id);
                     this.clearEmailTimer(email.id);
                     console.log(`Старое письмо ${email.id} удалено (возраст: ${Math.round(age / 1000 / 60)} минут)`);
                 } catch (error) {
@@ -709,6 +748,7 @@ class MailSlurpApp {
                     // Удалить из локального списка даже если API запрос не удался
                     this.emails = this.emails.filter(e => e.id !== email.id);
                     this.emailTimestamps.delete(email.id);
+                    this.loadedEmailIds.delete(email.id);
                     this.clearEmailTimer(email.id);
                 }
             }
@@ -787,44 +827,31 @@ class MailSlurpApp {
                 // Попытаться удалить все письма ящика перед удалением самого ящика
                 // Примечание: При удалении ящика через MailSlurp API все письма удаляются автоматически,
                 // но мы все равно пытаемся удалить их вручную для гарантии
-                try {
-                    const emails = await this.api.getEmails(inboxId, { size: 100 });
-                    if (emails && emails.length > 0) {
-                        for (const email of emails) {
-                            try {
-                                await this.api.deleteEmail(email.id);
-                                // Очистить таймеры и метаданные письма
+                // Удалить все письма этого ящика из локального хранилища
+                const emailsToRemove = this.emails.filter(email => email.inboxId === inboxId);
+                for (const email of emailsToRemove) {
+                    // Очистить таймеры и метаданные писем
                                 this.emailTimestamps.delete(email.id);
-                                this.clearEmailTimer(email.id);
-                            } catch (emailError) {
-                                // Игнорируем ошибки удаления отдельных писем
-                                // они удалятся автоматически при удалении ящика
-                                // Но все равно очищаем локальные данные
-                                this.emailTimestamps.delete(email.id);
+                    this.loadedEmailIds.delete(email.id);
                                 this.clearEmailTimer(email.id);
                             }
-                        }
-                    }
-                } catch (emailsError) {
-                    // Игнорируем ошибки при получении списка писем
-                    // ящик все равно будет удален
-                }
                 
+                // Удалить письма этого ящика из массива
+                this.emails = this.emails.filter(email => email.inboxId !== inboxId);
+                
+                // Удалить ящик на сервере (письма удалятся автоматически)
                 await this.api.deleteInbox(inboxId);
                 this.inboxes = this.inboxes.filter(inbox => inbox.id !== inboxId);
                 this.ui.updateInboxesList(this.inboxes);
                 this.ui.updateInboxSelector(this.inboxes);
                 
-                // Очистить письма если это текущий ящик
+                // Если это был текущий ящик, очистить текущий выбор
                 if (this.currentInboxId === inboxId) {
-                    // Очистить все таймеры писем этого ящика
-                    for (const email of this.emails) {
-                        this.emailTimestamps.delete(email.id);
-                        this.clearEmailTimer(email.id);
-                    }
-                    this.emails = [];
-                    this.ui.updateEmailsList(this.emails);
                     this.currentInboxId = null;
+                    this.ui.updateEmailsList([]);
+                } else {
+                    // Обновить список писем, если он отображается
+                    this.ui.updateEmailsList(this.emails);
                 }
                 
                 console.log(`Ящик ${inboxId} и его письма автоматически удалены`);
@@ -878,22 +905,65 @@ class MailSlurpApp {
     /**
      * Скачать вложение
      * @param {string} attachmentId - ID вложения
+     * @param {string} filename - Имя файла (опционально, если известно заранее)
      */
-    async downloadAttachment(attachmentId) {
+    async downloadAttachment(attachmentId, filename = null) {
         try {
-            const attachment = await this.api.getAttachment(attachmentId);
+            // Получаем вложение как Blob для гарантированного скачивания
+            const attachment = await this.api.getAttachment(attachmentId, filename);
             
-            // Создать ссылку для скачивания
+            if (!attachment || !attachment.blob) {
+                throw new Error('Не удалось получить данные вложения');
+            }
+
+            // Используем более надежный способ скачивания через Blob
+            const blob = attachment.blob;
+            const downloadFilename = attachment.filename || filename || `attachment-${attachmentId}`;
+            
+            // Создаем ссылку для скачивания
             const link = document.createElement('a');
             link.href = attachment.downloadUrl;
-            link.download = attachment.filename || 'attachment';
+            link.download = downloadFilename;
+            
+            // Добавляем атрибуты для принудительного скачивания
+            link.style.display = 'none';
+            link.setAttribute('download', downloadFilename);
+            
+            // Добавляем в DOM, кликаем и удаляем
+            document.body.appendChild(link);
             link.click();
             
-            this.ui.showToast('Вложение скачивается...', 'info');
+            // Очищаем URL после небольшой задержки
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(attachment.downloadUrl);
+            }, 100);
+            
+            // Показываем информацию о размере файла
+            const fileSize = attachment.size ? this.formatFileSize(attachment.size) : '';
+            const message = fileSize 
+                ? `Вложение скачивается... (${fileSize})` 
+                : 'Вложение скачивается...';
+            
+            this.ui.showToast(message, 'info');
         } catch (error) {
             console.error('Ошибка скачивания вложения:', error);
-            this.ui.showToast('Ошибка скачивания вложения', 'error');
+            const errorMessage = error.message || 'Ошибка скачивания вложения';
+            this.ui.showToast(errorMessage, 'error');
         }
+    }
+
+    /**
+     * Форматировать размер файла
+     * @param {number} bytes - Размер в байтах
+     * @returns {string} Отформатированный размер
+     */
+    formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 
     /**
