@@ -134,6 +134,14 @@ class MailSlurpUI {
         document.addEventListener('languageChanged', () => {
             this.updateUIAfterLanguageChange();
         });
+
+        // Кнопка сохранения письма как HTML
+        const saveEmailHtmlBtn = document.getElementById('save-email-html-btn');
+        if (saveEmailHtmlBtn) {
+            saveEmailHtmlBtn.addEventListener('click', () => {
+                this.saveEmailAsHtml();
+            });
+        }
     }
 
     /**
@@ -407,6 +415,9 @@ class MailSlurpUI {
             modal.setAttribute('data-email-id', emailId);
         }
 
+        // Сохраняем полные данные письма в data-атрибуте для генерации HTML
+        modal.setAttribute('data-email-data', JSON.stringify(email));
+
         // Заполнить заголовок письма
         document.getElementById('email-from').textContent = email.from || 'Неизвестно';
         document.getElementById('email-to-view').textContent = email.to || 'Неизвестно';
@@ -416,12 +427,17 @@ class MailSlurpUI {
         // Обработать содержимое письма
         const emailBody = document.getElementById('email-body');
         if (email.body) {
-            if (email.isHTML) {
+            // Автоматически определяем, является ли контент HTML
+            const isHTML = email.isHTML || this.isHtmlContent(email.body);
+            
+            if (isHTML) {
                 // Безопасное отображение HTML
                 emailBody.innerHTML = this.sanitizeHtmlContent(email.body);
+                // Добавляем класс для стилизации HTML-контента
+                emailBody.className = 'email-body-html';
             } else {
                 // Отображение как обычный текст
-                emailBody.innerHTML = `<pre>${this.escapeHtml(email.body)}</pre>`;
+                emailBody.innerHTML = `<pre class="email-body-text">${this.escapeHtml(email.body)}</pre>`;
             }
         } else {
             emailBody.innerHTML = '<p class="text-muted">Содержимое письма отсутствует</p>';
@@ -597,6 +613,27 @@ class MailSlurpUI {
     }
 
     /**
+     * Определить, является ли контент HTML
+     * @param {string} content - Контент для проверки
+     * @returns {boolean} true если контент содержит HTML-теги
+     */
+    isHtmlContent(content) {
+        if (!content || typeof content !== 'string') {
+            return false;
+        }
+        
+        // Проверяем наличие HTML-тегов
+        const htmlTagPattern = /<[a-z][\s\S]*>/i;
+        const hasHtmlTags = htmlTagPattern.test(content);
+        
+        // Проверяем наличие типичных HTML-структур
+        const hasHtmlStructure = /<(p|div|span|h[1-6]|br|img|a|table|ul|ol|li|strong|em|b|i)[\s>]/i.test(content);
+        
+        // Если есть HTML-теги или структуры, считаем это HTML
+        return hasHtmlTags || hasHtmlStructure;
+    }
+
+    /**
      * Санитизировать HTML контент
      * @param {string} html - HTML контент
      * @returns {string} Безопасный HTML
@@ -607,17 +644,43 @@ class MailSlurpUI {
         temp.innerHTML = html;
 
         // Удаляем потенциально опасные элементы
-        const dangerousTags = ['script', 'object', 'embed', 'iframe', 'form', 'input'];
+        const dangerousTags = ['script', 'object', 'embed', 'iframe', 'form', 'input', 'button'];
         dangerousTags.forEach(tag => {
             const elements = temp.querySelectorAll(tag);
             elements.forEach(el => el.remove());
         });
 
+        // Удаляем опасные атрибуты (onclick, onerror и т.д.)
+        const dangerousAttributes = ['onclick', 'onerror', 'onload', 'onmouseover', 'onfocus'];
+        const allElements = temp.querySelectorAll('*');
+        allElements.forEach(el => {
+            dangerousAttributes.forEach(attr => {
+                el.removeAttribute(attr);
+            });
+        });
+
         // Добавляем target="_blank" к внешним ссылкам
-        const links = temp.querySelectorAll('a[href^="http"]');
+        const links = temp.querySelectorAll('a[href]');
         links.forEach(link => {
-            link.setAttribute('target', '_blank');
-            link.setAttribute('rel', 'noopener noreferrer');
+            const href = link.getAttribute('href');
+            if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            }
+        });
+
+        // Улучшаем отображение изображений
+        const images = temp.querySelectorAll('img');
+        images.forEach(img => {
+            // Убеждаемся, что изображения имеют правильные атрибуты
+            if (!img.hasAttribute('style')) {
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            }
+            // Добавляем alt, если его нет
+            if (!img.hasAttribute('alt')) {
+                img.setAttribute('alt', 'Изображение из письма');
+            }
         });
 
         return temp.innerHTML;
@@ -746,6 +809,28 @@ class MailSlurpUI {
                 text.textContent = this.app.i18n.t('disconnected');
                 text.parentElement.classList.add('disconnected');
             }
+        }
+    }
+
+    /**
+     * Сохранить письмо как HTML файл
+     */
+    saveEmailAsHtml() {
+        const modal = document.getElementById('view-email-modal');
+        if (!modal) return;
+
+        const emailDataStr = modal.getAttribute('data-email-data');
+        if (!emailDataStr) {
+            this.showToast('Данные письма не найдены', 'error');
+            return;
+        }
+
+        try {
+            const email = JSON.parse(emailDataStr);
+            this.app.saveEmailAsHtml(email);
+        } catch (error) {
+            console.error('Ошибка при сохранении письма как HTML:', error);
+            this.showToast('Ошибка при сохранении письма', 'error');
         }
     }
 }

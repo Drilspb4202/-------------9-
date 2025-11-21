@@ -763,6 +763,308 @@ class MailSlurpApp {
     }
 
     /**
+     * Сохранить письмо как красивый HTML файл
+     * @param {Object} email - Данные письма
+     */
+    saveEmailAsHtml(email) {
+        try {
+            const htmlContent = this.generateEmailHtml(email);
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            
+            // Создаем имя файла из темы письма и даты
+            const subject = email.subject || 'Письмо';
+            const date = new Date(email.createdAt);
+            const dateStr = date.toISOString().split('T')[0];
+            const filename = `${this.sanitizeFilename(subject)}_${dateStr}.html`;
+            
+            // Скачиваем файл
+            this.downloadBlob(blob, filename);
+            
+            this.ui.showToast('Письмо сохранено как HTML', 'success');
+        } catch (error) {
+            console.error('Ошибка при сохранении письма как HTML:', error);
+            this.ui.showToast('Ошибка при сохранении письма', 'error');
+        }
+    }
+
+    /**
+     * Генерировать красивый HTML для письма
+     * @param {Object} email - Данные письма
+     * @returns {string} HTML контент
+     */
+    generateEmailHtml(email) {
+        const from = email.from || 'Неизвестно';
+        const to = email.to || 'Неизвестно';
+        const subject = email.subject || '(Без темы)';
+        const date = new Date(email.createdAt);
+        const formattedDate = this.i18n.formatDate(date);
+        const body = email.body || '';
+        const isHTML = email.isHTML || false;
+        const attachments = email.attachments || [];
+
+        // Очищаем HTML контент для безопасного отображения
+        const safeBody = isHTML ? this.sanitizeHtmlForFile(body) : this.escapeHtml(body);
+
+        return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${this.escapeHtml(subject)}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .email-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 30px;
+        }
+        
+        .email-header h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .email-meta {
+            display: grid;
+            gap: 12px;
+            font-size: 14px;
+        }
+        
+        .email-meta-item {
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .email-meta-item strong {
+            min-width: 80px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+        
+        .email-meta-item span {
+            flex: 1;
+        }
+        
+        .email-content {
+            padding: 30px;
+            background: #ffffff;
+        }
+        
+        .email-body {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+        }
+        
+        .email-body pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .email-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .email-body a {
+            color: #667eea;
+            text-decoration: none;
+            border-bottom: 1px solid #667eea;
+        }
+        
+        .email-body a:hover {
+            color: #764ba2;
+            border-bottom-color: #764ba2;
+        }
+        
+        .email-attachments {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .email-attachments h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .attachments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .attachment-item i {
+            color: #667eea;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            
+            .email-container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>${this.escapeHtml(subject)}</h1>
+            <div class="email-meta">
+                <div class="email-meta-item">
+                    <strong>От:</strong>
+                    <span>${this.escapeHtml(from)}</span>
+                </div>
+                <div class="email-meta-item">
+                    <strong>Кому:</strong>
+                    <span>${this.escapeHtml(to)}</span>
+                </div>
+                <div class="email-meta-item">
+                    <strong>Дата:</strong>
+                    <span>${this.escapeHtml(formattedDate)}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="email-content">
+            <div class="email-body">
+                ${isHTML ? safeBody : `<pre>${safeBody}</pre>`}
+            </div>
+        </div>
+        
+        ${attachments.length > 0 ? `
+        <div class="email-attachments">
+            <h3>
+                📎 Вложения (${attachments.length})
+            </h3>
+            <div class="attachments-list">
+                ${attachments.map(att => `
+                    <div class="attachment-item">
+                        <span style="font-size: 18px;">📎</span>
+                        <span>${this.escapeHtml(att.filename || att.name || 'Вложение')}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="footer">
+            <p>Сохранено из NeuroMail - ${new Date().toLocaleString('ru-RU')}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    }
+
+    /**
+     * Санитизировать HTML для безопасного сохранения в файл
+     * @param {string} html - HTML контент
+     * @returns {string} Безопасный HTML
+     */
+    sanitizeHtmlForFile(html) {
+        // Создаем временный элемент для очистки HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Удаляем потенциально опасные элементы
+        const dangerousTags = ['script', 'object', 'embed', 'iframe', 'form', 'input'];
+        dangerousTags.forEach(tag => {
+            const elements = temp.querySelectorAll(tag);
+            elements.forEach(el => el.remove());
+        });
+
+        // Добавляем target="_blank" к внешним ссылкам
+        const links = temp.querySelectorAll('a[href^="http"]');
+        links.forEach(link => {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        });
+
+        return temp.innerHTML;
+    }
+
+    /**
+     * Очистить имя файла от недопустимых символов
+     * @param {string} filename - Имя файла
+     * @returns {string} Очищенное имя файла
+     */
+    sanitizeFilename(filename) {
+        return filename
+            .replace(/[<>:"/\\|?*]/g, '_')
+            .replace(/\s+/g, '_')
+            .substring(0, 100);
+    }
+
+    /**
+     * Экранировать HTML символы
+     * @param {string} text - Текст для экранирования
+     * @returns {string} Экранированный текст
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    /**
      * Удалить письмо
      * @param {string} emailId - ID письма
      */

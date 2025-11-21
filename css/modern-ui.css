@@ -473,6 +473,35 @@
     margin: 0;
 }
 
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#save-email-html-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+#save-email-html-btn span {
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    #save-email-html-btn span {
+        display: none;
+    }
+    
+    #save-email-html-btn {
+        padding: 0.5rem;
+        min-width: 36px;
+    }
+}
+
 .modal-close {
     background: rgba(138, 43, 226, 0.1);
     border: 1px solid var(--border-color);
