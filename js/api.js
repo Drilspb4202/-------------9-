@@ -12,6 +12,58 @@ class MailSlurpApi {
         this.timeout = 10000; // 10 секунд
         this.currentApiMode = 'public'; // public, personal, combined
         this.personalApiKey = null;
+        
+        // Очередь запросов для предотвращения ERR_INSUFFICIENT_RESOURCES
+        this.requestQueue = [];
+        this.activeRequests = 0;
+        this.maxConcurrentRequests = 3; // Максимум 3 одновременных запроса
+        this.processingQueue = false;
+    }
+
+    /**
+     * Обработать очередь запросов
+     */
+    async processQueue() {
+        if (this.processingQueue || this.requestQueue.length === 0) {
+            return;
+        }
+
+        if (this.activeRequests >= this.maxConcurrentRequests) {
+            return;
+        }
+
+        this.processingQueue = true;
+
+        while (this.requestQueue.length > 0 && this.activeRequests < this.maxConcurrentRequests) {
+            const { requestFn, resolve, reject } = this.requestQueue.shift();
+            this.activeRequests++;
+
+            requestFn()
+                .then(result => {
+                    this.activeRequests--;
+                    resolve(result);
+                    this.processQueue(); // Обработать следующий запрос
+                })
+                .catch(error => {
+                    this.activeRequests--;
+                    reject(error);
+                    this.processQueue(); // Обработать следующий запрос
+                });
+        }
+
+        this.processingQueue = false;
+    }
+
+    /**
+     * Добавить запрос в очередь
+     * @param {Function} requestFn - Функция запроса
+     * @returns {Promise} Результат запроса
+     */
+    async queueRequest(requestFn) {
+        return new Promise((resolve, reject) => {
+            this.requestQueue.push({ requestFn, resolve, reject });
+            this.processQueue();
+        });
     }
 
     /**
@@ -82,7 +134,12 @@ class MailSlurpApi {
             }
         };
 
-        return this.withRetry(requestFn);
+        // Обернуть в очередь запросов
+        const queuedRequestFn = async () => {
+            return await this.withRetry(requestFn);
+        };
+
+        return this.queueRequest(queuedRequestFn);
     }
 
     /**

@@ -26,6 +26,10 @@ class MailSlurpApp {
         // Отслеживание загруженных писем для предотвращения дубликатов
         this.loadedEmailIds = new Set(); // Set всех загруженных ID писем
         
+        // Защита от множественных одновременных запросов
+        this.loadingEmailsForInbox = new Set(); // Set inboxId, для которых идет загрузка
+        this.loadEmailsDebounceTimer = null;
+        
         // Настройки
         this.settings = {
             autoDeleteInboxes: true,
@@ -587,6 +591,18 @@ class MailSlurpApp {
      */
     async loadEmailsForInbox(inboxId) {
         try {
+            if (!inboxId) {
+                return [];
+            }
+            
+            // Защита от множественных одновременных запросов для одного ящика
+            if (this.loadingEmailsForInbox.has(inboxId)) {
+                console.log(`Загрузка писем для ящика ${inboxId} уже выполняется, пропускаем`);
+                return this.emails.filter(e => e.inboxId === inboxId);
+            }
+            
+            this.loadingEmailsForInbox.add(inboxId);
+            
             // Переключиться на вкладку с письмами
             this.ui.showSection('emails-section');
             
@@ -600,93 +616,111 @@ class MailSlurpApp {
             
             this.ui.showLoading('emails-section');
             
-            const emails = await this.api.getEmails(inboxId, { size: 50 });
+            try {
+                const emails = await this.api.getEmails(inboxId, { size: 50 });
             
-            // Убрать дубликаты по ID писем - используем Set для надежной проверки
-            const uniqueEmails = [];
-            const emailIds = new Set();
-            
-            if (emails && emails.length > 0) {
-                for (const email of emails) {
-                    // Убедиться, что у письма есть inboxId
-                    if (!email.inboxId) {
-                        email.inboxId = inboxId;
-                    }
-                    
-                    // Проверяем дубликаты по ID
-                    if (!emailIds.has(email.id) && !this.loadedEmailIds.has(email.id)) {
-                        emailIds.add(email.id);
-                        this.loadedEmailIds.add(email.id);
-                        uniqueEmails.push(email);
+                // Убрать дубликаты по ID писем - используем Set для надежной проверки
+                const uniqueEmails = [];
+                const emailIds = new Set();
+                
+                if (emails && emails.length > 0) {
+                    for (const email of emails) {
+                        // Убедиться, что у письма есть inboxId
+                        if (!email.inboxId) {
+                            email.inboxId = inboxId;
+                        }
                         
-                        // Если это новое письмо, запланировать его удаление
-                        if (!this.emailTimestamps.has(email.id)) {
-                            const createdAt = new Date(email.createdAt).getTime();
-                            this.emailTimestamps.set(email.id, createdAt);
-                            this.scheduleEmailDeletion(email.id, createdAt);
+                        // Проверяем дубликаты по ID
+                        if (!emailIds.has(email.id) && !this.loadedEmailIds.has(email.id)) {
+                            emailIds.add(email.id);
+                            this.loadedEmailIds.add(email.id);
+                            uniqueEmails.push(email);
+                            
+                            // Если это новое письмо, запланировать его удаление
+                            if (!this.emailTimestamps.has(email.id)) {
+                                const createdAt = new Date(email.createdAt).getTime();
+                                this.emailTimestamps.set(email.id, createdAt);
+                                this.scheduleEmailDeletion(email.id, createdAt);
+                            }
                         }
                     }
                 }
-            }
             
-            // Удалить старые письма (старше 10 минут)
-            await this.cleanupOldEmails();
-            
-            // Сохранить письма в localStorage
-            this.saveEmailsToLocalStorage();
-            
-            // Обновить список писем для текущего ящика
-            // Сначала удалить все письма этого ящика, которые больше не существуют в API
-            const currentInboxEmailIds = new Set(uniqueEmails.map(e => e.id));
-            this.emails = this.emails.filter(email => {
-                // Оставить письма других ящиков
-                if (email.inboxId !== inboxId) {
-                    return true;
-                }
-                // Для текущего ящика оставить только те, что есть в API
-                return currentInboxEmailIds.has(email.id);
-            });
-            
-            // Добавить новые письма из API
-            for (const email of uniqueEmails) {
-                // Проверить, нет ли уже такого письма в массиве
-                const existingIndex = this.emails.findIndex(e => e.id === email.id);
-                if (existingIndex === -1) {
-                    this.emails.push(email);
+                // Удалить старые письма (старше 10 минут)
+                await this.cleanupOldEmails();
+                
+                // Сохранить письма в localStorage
+                this.saveEmailsToLocalStorage();
+                
+                // Обновить список писем для текущего ящика
+                // Сначала удалить все письма этого ящика, которые больше не существуют в API
+                const currentInboxEmailIds = new Set(uniqueEmails.map(e => e.id));
+                this.emails = this.emails.filter(email => {
+                    // Оставить письма других ящиков
+                    if (email.inboxId !== inboxId) {
+                        return true;
+                    }
+                    // Для текущего ящика оставить только те, что есть в API
+                    return currentInboxEmailIds.has(email.id);
+                });
+                
+                // Добавить новые письма из API
+                for (const email of uniqueEmails) {
+                    // Проверить, нет ли уже такого письма в массиве
+                    const existingIndex = this.emails.findIndex(e => e.id === email.id);
+                    if (existingIndex === -1) {
+                        this.emails.push(email);
                     } else {
-                    // Обновить существующее письмо
-                    this.emails[existingIndex] = email;
+                        // Обновить существующее письмо
+                        this.emails[existingIndex] = email;
                     }
                 }
             
-            // Отсортировать письма по дате создания (новые первыми)
-            this.emails.sort((a, b) => {
-                const dateA = new Date(a.createdAt || a.receivedAt || 0).getTime();
-                const dateB = new Date(b.createdAt || b.receivedAt || 0).getTime();
-                return dateB - dateA;
-            });
-            
-            // Сохранить письма в localStorage после всех изменений
-            this.saveEmailsToLocalStorage();
-            
-            this.ui.updateEmailsList(this.emails);
-            this.ui.hideLoading('emails-section');
-            
-            return this.emails;
+                // Отсортировать письма по дате создания (новые первыми)
+                this.emails.sort((a, b) => {
+                    const dateA = new Date(a.createdAt || a.receivedAt || 0).getTime();
+                    const dateB = new Date(b.createdAt || b.receivedAt || 0).getTime();
+                    return dateB - dateA;
+                });
+                
+                // Сохранить письма в localStorage после всех изменений
+                this.saveEmailsToLocalStorage();
+                
+                this.ui.updateEmailsList(this.emails);
+                this.ui.hideLoading('emails-section');
+                this.loadingEmailsForInbox.delete(inboxId);
+                
+                return this.emails;
+            } catch (error) {
+                this.loadingEmailsForInbox.delete(inboxId);
+                throw error;
+            }
         } catch (error) {
             console.error('Ошибка загрузки писем:', error);
             this.ui.hideLoading('emails-section');
+            this.loadingEmailsForInbox.delete(inboxId);
             this.ui.showToast(this.i18n.t('error_loading_emails'), 'error');
             return [];
         }
     }
 
     /**
-     * Загрузить все письма
+     * Загрузить все письма (с debounce для предотвращения множественных вызовов)
      */
     async loadEmails() {
         if (this.currentInboxId) {
-            return await this.loadEmailsForInbox(this.currentInboxId);
+            // Очистить предыдущий таймер
+            if (this.loadEmailsDebounceTimer) {
+                clearTimeout(this.loadEmailsDebounceTimer);
+            }
+            
+            // Установить новый таймер с задержкой 300ms
+            return new Promise((resolve) => {
+                this.loadEmailsDebounceTimer = setTimeout(async () => {
+                    const result = await this.loadEmailsForInbox(this.currentInboxId);
+                    resolve(result);
+                }, 300);
+            });
         }
         return [];
     }
