@@ -1238,6 +1238,201 @@ class MailSlurpApp {
      * @param {string} filename - Имя файла (опционально, если известно заранее)
      * @param {string} emailId - ID письма (опционально, используется если attachmentId недоступен)
      */
+    /**
+     * Проверка, является ли устройство iOS
+     * @returns {boolean} true если устройство iOS
+     */
+    isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    /**
+     * Определить MIME-тип на основе расширения файла
+     * @param {string} filename - Имя файла
+     * @returns {string} MIME-тип
+     */
+    getMimeTypeFromFilename(filename) {
+        const extension = filename.split('.').pop().toLowerCase();
+        const mimeTypes = {
+            'json': 'application/json',
+            'conf': 'text/plain',
+            'config': 'text/plain',
+            'txt': 'text/plain',
+            'xml': 'application/xml',
+            'yaml': 'text/yaml',
+            'yml': 'text/yaml',
+            'ini': 'text/plain',
+            'properties': 'text/plain',
+            'env': 'text/plain',
+            'log': 'text/plain',
+            'pdf': 'application/pdf',
+            'zip': 'application/zip',
+            'rar': 'application/x-rar-compressed',
+            '7z': 'application/x-7z-compressed',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls': 'application/vnd.ms-excel',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'csv': 'text/csv',
+            'html': 'text/html',
+            'htm': 'text/html',
+            'css': 'text/css',
+            'js': 'application/javascript',
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'svg': 'image/svg+xml',
+            'webp': 'image/webp',
+            'mp3': 'audio/mpeg',
+            'mp4': 'video/mp4',
+            'avi': 'video/x-msvideo',
+            'mov': 'video/quicktime'
+        };
+        return mimeTypes[extension] || 'application/octet-stream';
+    }
+
+    /**
+     * Универсальный метод скачивания файла, работающий на всех платформах включая iOS
+     * @param {Blob} blob - Blob объект файла
+     * @param {string} filename - Имя файла
+     */
+    downloadBlob(blob, filename) {
+        const isIOSDevice = this.isIOS();
+        
+        // Определяем правильный MIME-тип, если он не указан или неправильный
+        let mimeType = blob.type;
+        if (!mimeType || mimeType === 'application/octet-stream') {
+            mimeType = this.getMimeTypeFromFilename(filename);
+        }
+        
+        // Создаем новый Blob с правильным MIME-типом
+        const typedBlob = blob.type !== mimeType ? new Blob([blob], { type: mimeType }) : blob;
+        
+        if (isIOSDevice) {
+            // Для iOS используем FileReader для создания data URL
+            // Это позволяет открыть файл в новой вкладке, откуда пользователь может сохранить его
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const dataUrl = reader.result;
+                
+                // Пытаемся использовать Web Share API для iOS (если доступен)
+                if (navigator.share && navigator.canShare) {
+                    const file = new File([typedBlob], filename, { type: mimeType });
+                    if (navigator.canShare({ files: [file] })) {
+                        navigator.share({
+                            files: [file],
+                            title: filename
+                        }).catch(() => {
+                            // Если share не сработал, используем fallback метод
+                            this.openBlobForIOS(dataUrl, filename);
+                        });
+                        return;
+                    }
+                }
+                
+                // Fallback: открываем в новой вкладке
+                this.openBlobForIOS(dataUrl, filename);
+            };
+            reader.onerror = () => {
+                throw new Error('Ошибка чтения файла');
+            };
+            reader.readAsDataURL(typedBlob);
+        } else {
+            // Для других платформ используем стандартный метод
+            const url = URL.createObjectURL(typedBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.style.display = 'none';
+            link.setAttribute('download', filename);
+            
+            document.body.appendChild(link);
+            link.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+    }
+
+    /**
+     * Открыть blob для iOS (fallback метод)
+     * @param {string} dataUrl - Data URL файла
+     * @param {string} filename - Имя файла
+     */
+    openBlobForIOS(dataUrl, filename) {
+        // Определяем, является ли файл текстовым (конфиг, JSON и т.д.)
+        const isTextFile = /\.(json|conf|config|txt|xml|yaml|yml|ini|properties|env|log|html|css|js)$/i.test(filename);
+        const mimeType = this.getMimeTypeFromFilename(filename);
+        const isTextMime = mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType === 'application/xml';
+        
+        // Создаем временную ссылку для открытия файла
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.download = filename;
+        link.setAttribute('download', filename);
+        
+        // Для текстовых файлов пытаемся открыть в новой вкладке
+        // Это позволит пользователю увидеть содержимое и сохранить через меню браузера
+        if (isTextFile || isTextMime) {
+            try {
+                const newWindow = window.open(dataUrl, '_blank');
+                if (newWindow && !newWindow.closed) {
+                    // Файл открылся, показываем подсказку
+                    this.ui.showToast('Файл открыт. Используйте меню браузера для сохранения', 'info', 4000);
+                    return;
+                }
+            } catch (e) {
+                console.log('Не удалось открыть файл автоматически:', e);
+            }
+        }
+        
+        // Если не удалось открыть автоматически, создаем видимую ссылку
+        this.ui.showToast('Нажмите на ссылку ниже и выберите "Сохранить в файлы"', 'info', 5000);
+        
+        link.style.display = 'block';
+        link.style.position = 'fixed';
+        link.style.top = '50%';
+        link.style.left = '50%';
+        link.style.transform = 'translate(-50%, -50%)';
+        link.style.padding = '15px 25px';
+        link.style.backgroundColor = 'var(--primary-color, #6366f1)';
+        link.style.color = 'white';
+        link.style.borderRadius = '8px';
+        link.style.zIndex = '10000';
+        link.style.textDecoration = 'none';
+        link.style.fontSize = '16px';
+        link.style.fontWeight = 'bold';
+        link.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+        link.style.maxWidth = '90%';
+        link.style.wordBreak = 'break-word';
+        link.style.textAlign = 'center';
+        link.textContent = `📥 Сохранить: ${filename}`;
+        
+        // Добавляем обработчик для удаления ссылки после клика
+        link.addEventListener('click', () => {
+            setTimeout(() => {
+                if (link.parentNode) {
+                    document.body.removeChild(link);
+                }
+            }, 2000);
+        });
+        
+        document.body.appendChild(link);
+        
+        // Удаляем ссылку через 15 секунд
+        setTimeout(() => {
+            if (link.parentNode) {
+                document.body.removeChild(link);
+            }
+        }, 15000);
+    }
+
     async downloadAttachment(attachmentId, filename = null, emailId = null) {
         try {
             let attachment;
@@ -1257,28 +1452,11 @@ class MailSlurpApp {
                 throw new Error('Не удалось получить данные вложения');
             }
 
-            // Используем более надежный способ скачивания через Blob
             const blob = attachment.blob;
             const downloadFilename = attachment.filename || filename || `attachment-${attachmentId || 'unknown'}`;
             
-            // Создаем ссылку для скачивания
-            const link = document.createElement('a');
-            link.href = attachment.downloadUrl;
-            link.download = downloadFilename;
-            
-            // Добавляем атрибуты для принудительного скачивания
-            link.style.display = 'none';
-            link.setAttribute('download', downloadFilename);
-            
-            // Добавляем в DOM, кликаем и удаляем
-            document.body.appendChild(link);
-            link.click();
-            
-            // Очищаем URL после небольшой задержки
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(attachment.downloadUrl);
-            }, 100);
+            // Используем универсальный метод скачивания
+            this.downloadBlob(blob, downloadFilename);
             
             // Показываем информацию о размере файла
             const fileSize = attachment.size ? this.formatFileSize(attachment.size) : '';
