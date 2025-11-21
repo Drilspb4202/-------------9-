@@ -741,6 +741,20 @@ class MailSlurpApp {
     async viewEmail(emailId) {
         try {
             const email = await this.api.getEmail(emailId);
+            
+            // Если вложений нет в ответе, загружаем их отдельно
+            if (!email.attachments || email.attachments.length === 0) {
+                try {
+                    const attachments = await this.api.getEmailAttachments(emailId);
+                    if (attachments && attachments.length > 0) {
+                        email.attachments = attachments;
+                    }
+                } catch (attachmentsError) {
+                    console.warn('Не удалось загрузить вложения отдельно:', attachmentsError);
+                    // Продолжаем без вложений
+                }
+            }
+            
             this.ui.showEmailViewer(email);
         } catch (error) {
             console.error('Ошибка загрузки письма:', error);
@@ -1301,10 +1315,22 @@ class MailSlurpApp {
     downloadBlob(blob, filename) {
         const isIOSDevice = this.isIOS();
         
+        // Убеждаемся, что WireGuard конфиги имеют правильное расширение .conf
+        let finalFilename = filename;
+        if (/wireguard|wg|vpn/i.test(filename) && !filename.toLowerCase().endsWith('.conf')) {
+            finalFilename = filename.replace(/\.[^.]*$/, '') + '.conf';
+        }
+        
         // Определяем правильный MIME-тип, если он не указан или неправильный
         let mimeType = blob.type;
         if (!mimeType || mimeType === 'application/octet-stream') {
-            mimeType = this.getMimeTypeFromFilename(filename);
+            mimeType = this.getMimeTypeFromFilename(finalFilename);
+        }
+        
+        // Для WireGuard конфигов используем text/plain для лучшей совместимости с iOS
+        const isWireGuardConfig = /\.conf$/i.test(finalFilename) || /wireguard|wg/i.test(finalFilename);
+        if (isWireGuardConfig) {
+            mimeType = 'text/plain';
         }
         
         // Создаем новый Blob с правильным MIME-типом
@@ -1317,23 +1343,29 @@ class MailSlurpApp {
             reader.onloadend = () => {
                 const dataUrl = reader.result;
                 
+                // Для WireGuard конфигов используем специальный метод
+                if (isWireGuardConfig) {
+                    this.downloadWireGuardConfigForIOS(typedBlob, finalFilename, dataUrl);
+                    return;
+                }
+                
                 // Пытаемся использовать Web Share API для iOS (если доступен)
                 if (navigator.share && navigator.canShare) {
-                    const file = new File([typedBlob], filename, { type: mimeType });
+                    const file = new File([typedBlob], finalFilename, { type: mimeType });
                     if (navigator.canShare({ files: [file] })) {
                         navigator.share({
                             files: [file],
-                            title: filename
+                            title: finalFilename
                         }).catch(() => {
                             // Если share не сработал, используем fallback метод
-                            this.openBlobForIOS(dataUrl, filename);
+                            this.openBlobForIOS(dataUrl, finalFilename);
                         });
                         return;
                     }
                 }
                 
                 // Fallback: открываем в новой вкладке
-                this.openBlobForIOS(dataUrl, filename);
+                this.openBlobForIOS(dataUrl, finalFilename);
             };
             reader.onerror = () => {
                 throw new Error('Ошибка чтения файла');
@@ -1344,9 +1376,9 @@ class MailSlurpApp {
             const url = URL.createObjectURL(typedBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = filename;
+            link.download = finalFilename;
             link.style.display = 'none';
-            link.setAttribute('download', filename);
+            link.setAttribute('download', finalFilename);
             
             document.body.appendChild(link);
             link.click();
@@ -1356,6 +1388,74 @@ class MailSlurpApp {
                 URL.revokeObjectURL(url);
             }, 100);
         }
+    }
+
+    /**
+     * Скачать WireGuard конфиг для iOS с поддержкой открытия в WireGuard приложении
+     * @param {Blob} blob - Blob объект файла
+     * @param {string} filename - Имя файла
+     * @param {string} dataUrl - Data URL файла
+     */
+    downloadWireGuardConfigForIOS(blob, filename, dataUrl) {
+        // Создаем ссылку для скачивания с правильным атрибутом download
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        link.setAttribute('download', filename);
+        link.style.display = 'none';
+        
+        // Добавляем ссылку в DOM и кликаем
+        document.body.appendChild(link);
+        link.click();
+        
+        // Удаляем ссылку через небольшую задержку
+        setTimeout(() => {
+            if (link.parentNode) {
+                document.body.removeChild(link);
+            }
+        }, 100);
+        
+        // Показываем инструкции для пользователя
+        const instructions = `
+            <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                        background: var(--card-bg, #1a1a2e); padding: 20px; border-radius: 12px; 
+                        z-index: 10000; max-width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                        border: 2px solid var(--primary-color, #6366f1);">
+                <h3 style="margin-top: 0; color: var(--primary-color, #6366f1);">
+                    📱 WireGuard конфиг для iOS
+                </h3>
+                <p style="color: var(--text-color, #e0e0e0); line-height: 1.6;">
+                    <strong>Файл: ${filename}</strong>
+                </p>
+                <ol style="color: var(--text-color, #e0e0e0); line-height: 1.8; padding-left: 20px;">
+                    <li>Нажмите на ссылку выше (если появилась)</li>
+                    <li>Выберите <strong>"Сохранить в файлы"</strong></li>
+                    <li>Откройте приложение <strong>WireGuard</strong></li>
+                    <li>Нажмите <strong>"+"</strong> → <strong>"Создать из файла"</strong></li>
+                    <li>Выберите сохраненный файл <strong>${filename}</strong></li>
+                </ol>
+                <p style="color: var(--text-muted, #888); font-size: 0.9em; margin-bottom: 0;">
+                    💡 Если файл не виден, проверьте папку "Загрузки" в приложении "Файлы"
+                </p>
+                <button onclick="this.parentElement.remove()" 
+                        style="margin-top: 15px; padding: 10px 20px; background: var(--primary-color, #6366f1); 
+                               color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%;">
+                    Понятно
+                </button>
+            </div>
+        `;
+        
+        // Создаем контейнер для инструкций
+        const instructionsDiv = document.createElement('div');
+        instructionsDiv.innerHTML = instructions;
+        document.body.appendChild(instructionsDiv);
+        
+        // Удаляем инструкции через 30 секунд
+        setTimeout(() => {
+            if (instructionsDiv.parentNode) {
+                document.body.removeChild(instructionsDiv);
+            }
+        }, 30000);
     }
 
     /**
@@ -1453,7 +1553,24 @@ class MailSlurpApp {
             }
 
             const blob = attachment.blob;
-            const downloadFilename = attachment.filename || filename || `attachment-${attachmentId || 'unknown'}`;
+            let downloadFilename = attachment.filename || filename || `attachment-${attachmentId || 'unknown'}`;
+            
+            // Проверяем, является ли файл WireGuard конфигом по содержимому (если это текстовый файл)
+            if (blob.type === 'text/plain' || blob.type.startsWith('text/') || !blob.type || blob.type === 'application/octet-stream') {
+                try {
+                    // Читаем первые байты для проверки содержимого
+                    const textPreview = await blob.slice(0, 200).text();
+                    if (/\[Interface\]|\[Peer\]|PrivateKey|PublicKey|Endpoint/i.test(textPreview)) {
+                        // Это WireGuard конфиг - убеждаемся, что у него правильное расширение
+                        if (!downloadFilename.toLowerCase().endsWith('.conf')) {
+                            downloadFilename = downloadFilename.replace(/\.[^.]*$/, '') + '.conf';
+                        }
+                    }
+                } catch (e) {
+                    // Если не удалось прочитать, просто используем текущее имя
+                    console.log('Не удалось проверить содержимое файла:', e);
+                }
+            }
             
             // Используем универсальный метод скачивания
             this.downloadBlob(blob, downloadFilename);

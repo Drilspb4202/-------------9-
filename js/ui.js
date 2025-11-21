@@ -431,9 +431,15 @@ class MailSlurpUI {
         const attachmentsContainer = document.getElementById('email-attachments');
         const attachmentsList = document.getElementById('attachments-list');
         
+        // Логирование для отладки
+        console.log('Письмо для отображения:', email);
+        console.log('Вложения в письме:', email.attachments);
+        
         if (email.attachments && email.attachments.length > 0) {
+            console.log(`Найдено ${email.attachments.length} вложений`);
             attachmentsContainer.style.display = 'block';
             attachmentsList.innerHTML = email.attachments.map((attachment, index) => {
+                console.log(`Обработка вложения ${index}:`, attachment);
                 const filename = attachment.filename || attachment.name || 'Вложение';
                 // Проверяем разные возможные поля для ID вложения
                 const attachmentId = attachment.id || attachment.attachmentId || attachment.attachmentMetaId;
@@ -485,6 +491,7 @@ class MailSlurpUI {
                 }
             }).join('');
         } else {
+            console.log('Вложения не найдены в письме');
             attachmentsContainer.style.display = 'none';
         }
 
