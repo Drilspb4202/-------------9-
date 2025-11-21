@@ -401,6 +401,12 @@ class MailSlurpUI {
         const modal = document.getElementById('view-email-modal');
         if (!modal) return;
 
+        // Сохраняем emailId в data-атрибуте модального окна для использования при скачивании
+        const emailId = email.id || email.emailId;
+        if (emailId) {
+            modal.setAttribute('data-email-id', emailId);
+        }
+
         // Заполнить заголовок письма
         document.getElementById('email-from').textContent = email.from || 'Неизвестно';
         document.getElementById('email-to-view').textContent = email.to || 'Неизвестно';
@@ -427,20 +433,56 @@ class MailSlurpUI {
         
         if (email.attachments && email.attachments.length > 0) {
             attachmentsContainer.style.display = 'block';
-            attachmentsList.innerHTML = email.attachments.map(attachment => {
-                const filename = attachment.filename || 'Вложение';
-                const attachmentId = attachment.id;
+            attachmentsList.innerHTML = email.attachments.map((attachment, index) => {
+                const filename = attachment.filename || attachment.name || 'Вложение';
+                // Проверяем разные возможные поля для ID вложения
+                const attachmentId = attachment.id || attachment.attachmentId || attachment.attachmentMetaId;
+                
                 // Экранируем кавычки в имени файла для безопасного использования в onclick
                 const safeFilename = filename.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                return `
-                <div class="attachment-item">
-                    <i class="fas fa-paperclip"></i>
-                    <span>${this.escapeHtml(filename)}</span>
-                    <button class="btn btn-small btn-secondary" onclick="window.mailSlurpApp.downloadAttachment('${attachmentId}', '${safeFilename}')" title="Скачать вложение">
-                        <i class="fas fa-download"></i>
-                    </button>
-                </div>
-            `;
+                const safeEmailId = emailId ? emailId.replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+                
+                // Всегда показываем кнопку скачивания, даже если ID недоступен
+                // Если ID есть, используем его, иначе используем emailId и filename
+                if (attachmentId) {
+                    return `
+                    <div class="attachment-item">
+                        <i class="fas fa-paperclip"></i>
+                        <span>${this.escapeHtml(filename)}</span>
+                        <button class="btn btn-small btn-secondary" onclick="window.mailSlurpApp.downloadAttachment('${attachmentId}', '${safeFilename}', ${safeEmailId ? `'${safeEmailId}'` : 'null'})" title="Скачать вложение">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                `;
+                } else {
+                    // Если ID недоступен, но есть emailId, используем альтернативный метод
+                    if (emailId) {
+                        // Используем data-атрибуты для передачи данных, чтобы избежать проблем с null в onclick
+                        return `
+                        <div class="attachment-item">
+                            <i class="fas fa-paperclip"></i>
+                            <span>${this.escapeHtml(filename)}</span>
+                            <button class="btn btn-small btn-secondary" 
+                                    data-email-id="${safeEmailId}" 
+                                    data-filename="${safeFilename}"
+                                    onclick="window.mailSlurpApp.downloadAttachmentByEmailId(this)" 
+                                    title="Скачать вложение (ID недоступен, используется альтернативный метод)">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <span class="text-muted" style="font-size: 0.75em; margin-left: 8px;">(через emailId)</span>
+                        </div>
+                    `;
+                    } else {
+                        // Если нет ни ID, ни emailId, показываем без кнопки
+                        return `
+                        <div class="attachment-item">
+                            <i class="fas fa-paperclip"></i>
+                            <span>${this.escapeHtml(filename)}</span>
+                            <span class="text-muted" style="font-size: 0.85em; margin-left: 8px;">(ID недоступен)</span>
+                        </div>
+                    `;
+                    }
+                }
             }).join('');
         } else {
             attachmentsContainer.style.display = 'none';

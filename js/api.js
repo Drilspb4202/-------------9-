@@ -478,6 +478,145 @@ class MailSlurpApi {
     }
 
     /**
+     * Получить список вложений письма
+     * @param {string} emailId - ID письма
+     * @returns {Promise<Array>} Список вложений
+     */
+    async getEmailAttachments(emailId) {
+        try {
+            const response = await this.makeRequest(`/emails/${emailId}/attachments`, {
+                method: 'GET'
+            });
+
+            return response || [];
+        } catch (error) {
+            console.error('Ошибка получения вложений письма:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Скачать вложение письма по emailId и имени файла
+     * @param {string} emailId - ID письма
+     * @param {string} filename - Имя файла вложения
+     * @returns {Promise<Object>} Данные вложения
+     */
+    async getAttachmentByEmailIdAndFilename(emailId, filename) {
+        const requestFn = async () => {
+            // Сначала получаем список вложений письма
+            let attachments = [];
+            try {
+                attachments = await this.getEmailAttachments(emailId);
+            } catch (error) {
+                console.warn('Не удалось получить список вложений через API, пробуем альтернативный метод:', error);
+                // Если не удалось получить список, попробуем скачать напрямую через emailId
+                // В этом случае используем первый доступный attachmentId из исходного email
+            }
+            
+            // Ищем вложение по имени файла (точное совпадение)
+            let attachmentId = null;
+            for (const attachment of attachments) {
+                const attFilename = attachment.filename || attachment.name || '';
+                if (attFilename === filename || 
+                    attFilename.toLowerCase() === filename.toLowerCase() ||
+                    (attachment.contentId && attachment.contentId.includes(filename))) {
+                    attachmentId = attachment.id || attachment.attachmentId || attachment.attachmentMetaId;
+                    if (attachmentId) break;
+                }
+            }
+            
+            // Если не нашли точное совпадение, ищем частичное
+            if (!attachmentId) {
+                for (const attachment of attachments) {
+                    const attFilename = attachment.filename || attachment.name || '';
+                    if (attFilename.includes(filename) || filename.includes(attFilename)) {
+                        attachmentId = attachment.id || attachment.attachmentId || attachment.attachmentMetaId;
+                        if (attachmentId) break;
+                    }
+                }
+            }
+            
+            // Если все еще не нашли, пробуем взять первое вложение
+            if (!attachmentId && attachments.length > 0) {
+                attachmentId = attachments[0].id || attachments[0].attachmentId || attachments[0].attachmentMetaId;
+                console.log(`Используем первое доступное вложение: ${attachmentId}`);
+            }
+            
+            if (!attachmentId) {
+                throw new Error(`Вложение "${filename}" не найдено в письме. Всего вложений: ${attachments.length}`);
+            }
+            
+            // Скачиваем вложение через emailId и attachmentId
+            const apiKey = this.getCurrentApiKey();
+            if (!apiKey) {
+                throw new Error('Нет доступных API ключей');
+            }
+
+            const url = `${this.baseUrl}/emails/${emailId}/attachments/${attachmentId}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.timeout * 2);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': apiKey
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
+                }
+
+                // Получаем вложение как Blob, чтобы гарантированно скачать даже подозрительные файлы
+                const blob = await response.blob();
+                
+                // Получаем имя файла из заголовков или используем переданное
+                let attachmentFilename = filename;
+                if (!attachmentFilename) {
+                    const contentDisposition = response.headers.get('content-disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            attachmentFilename = filenameMatch[1].replace(/['"]/g, '');
+                            try {
+                                attachmentFilename = decodeURIComponent(attachmentFilename);
+                            } catch (e) {
+                                // Если не удалось декодировать, используем как есть
+                            }
+                        }
+                    }
+                }
+                
+                if (!attachmentFilename) {
+                    attachmentFilename = `attachment-${attachmentId}`;
+                }
+
+                const downloadUrl = URL.createObjectURL(blob);
+                
+                this.keyPool.markCurrentKeyUsed(false);
+                
+                return {
+                    downloadUrl: downloadUrl,
+                    filename: attachmentFilename,
+                    blob: blob,
+                    size: blob.size,
+                    type: blob.type
+                };
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        };
+
+        return this.withRetry(requestFn);
+    }
+
+    /**
      * Получить информацию о пользователе
      * @returns {Promise<Object>} Информация о пользователе
      */

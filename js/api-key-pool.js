@@ -4,31 +4,24 @@
  */
 class ApiKeyPool {
     constructor() {
-        // Публичные API ключи, предоставленные Khan
+        // Публичные API ключи
         this.publicKeys = [
             { 
-                key: "0d71400fe28471738cf0b933ffaa701d9ce7d9e09e07d52c271753c387f8bfcb", 
+                key: "sk_hxmA0fXLqsV2dfTL_ms4Wu8iOlV4rMJHKifqpqtz3tpfYqbpmqAEEwgokquGETNHVlOge76dzn74lXBAx", 
                 usageCount: 0, 
                 isExhausted: false,
                 lastUsed: null,
                 errorCount: 0
             },
             { 
-                key: "07da08f927f3c354bddcba093f38ee83f37ee265c7e1000e35a4ef236e5a43cb", 
+                key: "sk_Zicsam0SlsKZ4AaG_2b6BXhEqBnt4RBxbNgyaI9AiEupbj1NXFHjSYwDO2isNsvzVDJ5jFvvqbRDBfzBx", 
                 usageCount: 0, 
                 isExhausted: false,
                 lastUsed: null,
                 errorCount: 0
             },
             { 
-                key: "615e97d0cc2a0d5ac60f884cab3bf867b473b2733b1f6abfeb429019476dc9c7", 
-                usageCount: 0, 
-                isExhausted: false,
-                lastUsed: null,
-                errorCount: 0
-            },
-            { 
-                key: "713f7c889bfee18957c7e58eab48fb76e525001b98e50dfd473e87d30e91d9e7", 
+                key: "sk_LdZ5q6OyJBEycgSu_NTVAGOobEH2uRwCJ29uL0evSFSzF3iB9vxrSByQzCN42PK4UROiujISgFL4lJ994", 
                 usageCount: 0, 
                 isExhausted: false,
                 lastUsed: null,
